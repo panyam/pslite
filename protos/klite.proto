@@ -1,0 +1,109 @@
+syntax = "proto3";
+// import "google/protobuf/struct.proto";
+option go_package = "github.com/panyam/klite";
+package protos;
+
+message EmptyMessage {}
+
+/**
+ * The streaming servicefor listening to events from the server in a
+ * streaming fashion.
+ * The typical use case is:
+ *  client creates a subscription object.  This Subscription object
+ *  can be used to add or remove items to watch for.
+ *  
+ *  When the client is ready they can start listening on the subscription
+ *  when the server would send a stream of events/updates.
+ */
+service StreamerService {
+  rpc CreateTopic(CreateTopicRequest) returns (Topic);
+  rpc Publish(PublishRequest) returns (EmptyMessage);
+  rpc Subscribe(SubscribeRequest) returns (stream Message);
+}
+
+message Topic {
+  /**
+   * Name of the topic.
+   */
+  string name = 1;
+
+  /**
+   * Folder where topic will be persisted.
+   */
+  optional string topic_folder = 2;
+
+  /**
+   * How often will checkpointing be performed (in number of messages)?
+   */
+  optional int32 checkpoint_threshold = 3;
+
+  /**
+   * How often will checkpointing be done (in seconds) if # messages threshold
+   * not met.
+   */
+  optional int64 checkpoint_timeout = 4;
+
+  /**
+   * Messages are appended to chunk files.  The name of this chunk file is
+   * appended with the chunk number.
+   */
+  optional string chunk_name_format = 5;
+
+  /**
+   * Max number of bytes per topic chunk file.  New chunk files will be created
+   * when this many bytes have been written.
+   */
+  optional string chunk_size = 6;
+
+  /**
+   * Controls whether to include a timestamp in the message.
+   */
+  optional bool include_timestamp = 7;
+
+  /**
+   * Controls whether an index file is to be created.
+   */
+  optional bool create_indexes = 8;
+}
+
+message CreateTopicRequest {
+  Topic topic = 1;
+}
+
+message PublishRequest {
+  /**
+   * Content can be bytes or strings.
+   */
+  oneof content {
+    bytes content_bytes = 1;
+    string content_string = 2;
+  }
+}
+
+message SubscribeRequest {
+  /**
+   * Name of the topic to subscribe to.
+   */
+  string topic_name = 1;
+
+  /**
+   * Offset of the topic to start consuming from.
+   */
+  optional int64 offset = 2;
+
+  /**
+   * The end offset.  If this is specified, the subscription will end as soon as this offset is reached.
+   */
+  optional int64 end_offset = 3;
+
+  /**
+   * Specifies whether offsets are indexes or timestamps (true = index, false = timestamp)
+   */
+  optional bool by_offset = 4;
+}
+
+message Message {
+  int64 offset = 1;
+  int64 length = 2;
+  bytes content = 3;
+}
