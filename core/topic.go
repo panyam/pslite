@@ -78,6 +78,6 @@ func (topic *KLTopic) Publish(message []byte, offset int64, length int64) error 
  * Seeks a particular offset or timestamp in the topic and returns a MessageReader
  * that can start reading messages at this offset.
  */
-func (topic *KLTopic) Seek(offset int64, as_offset bool) (*MessageReader, error) {
+func (topic *KLTopic) SeekOffset(offset int64, as_offset bool) (*MessageReader, error) {
 	return nil, nil
 }

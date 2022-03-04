@@ -6,6 +6,16 @@ import (
 )
 
 /**
+ * Message interface for iterable and streamable messages.
+ */
+type Message interface {
+	Reader() io.ReaderAt
+	Offset() int64
+	Length() int64
+	Timestamp() int64
+}
+
+/**
  * An interface over a message iterator.
  * The way a message reader is to be used is when a Read is called
  * on a topic the read is to be performed on a range.
@@ -14,8 +24,7 @@ import (
  *
  *		mr := topic.Read(start, end)
  *		buffer := create_buffer(TEN_MB)
- *		for next_msg_byte_len := mr.NextLength(); next_msg_byte_len > 0 {
- *		// OR - for mr.HasMoreMessages() {
+ *		for nextMsg, err := mr.NextMessage() ; err == nil && nextMsg != nil {
  *			offset = 0
  *		  for {
  *				len, err := mr.Reader().ReadAt(buffer, offset)
@@ -36,8 +45,7 @@ type MessageReader interface {
 	 * Returns true if more messages exist.
 	 */
 	HasMore() bool
-	Reader() io.ReaderAt
-	Forward()
+	NextMessage() Message
 }
 
 type Topic interface {
