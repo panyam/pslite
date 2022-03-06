@@ -9,8 +9,7 @@ import (
  * Message interface for iterable and streamable messages.
  */
 type Message interface {
-	Reader() io.ReaderAt
-	Offset() int64
+	Reader() io.Reader
 	Length() int64
 	Timestamp() int64
 }
@@ -49,9 +48,10 @@ type MessageReader interface {
 }
 
 type Topic interface {
-	Name() string
-	Publish(message []byte, offset int64, length int64) error
-	Subscribe(offset int64) chan *io.ReaderAt
+	MsgCount() int64
+	Publish(message []byte) error
+	// Subscribe(offset int64) (chan *io.ReaderAt, error)
+	Subscribe(start_offset int64, end_offset int64, by_index bool) (chan *io.ReaderAt, error)
 	SeekOffset(offset int64, as_offset bool) (*MessageReader, error)
 }
 
@@ -78,12 +78,12 @@ func NewEngine(basedir string) (*KLEngine, error) {
 /**
  * Adds a new topic to the engine.
  */
-func (eng *KLEngine) AddTopic(topic Topic) error {
-	curr, ok := eng.Topics[topic.Name()]
+func (eng *KLEngine) AddTopic(name string, topic Topic) error {
+	curr, ok := eng.Topics[name]
 	if ok || curr != nil {
-		return fmt.Errorf("Topic '%s' already exists", topic.Name())
+		return fmt.Errorf("Topic '%s' already exists", name)
 	}
-	eng.Topics[topic.Name()] = topic
+	eng.Topics[name] = topic
 	return nil
 }
 
@@ -91,5 +91,9 @@ func (eng *KLEngine) AddTopic(topic Topic) error {
  * Gets a named topic.
  */
 func (eng *KLEngine) GetTopic(name string) Topic {
+	if curr, ok := eng.Topics[name]; ok {
+		return curr
+	}
+	// open it otherwise
 	return eng.Topics[name]
 }

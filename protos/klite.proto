@@ -30,40 +30,28 @@ message Topic {
   /**
    * Folder where topic will be persisted.
    */
-  optional string topic_folder = 2;
+  string topic_folder = 2;
 
   /**
    * How often will checkpointing be performed (in number of messages)?
    */
-  optional int32 checkpoint_threshold = 3;
+  int32 checkpoint_threshold = 3;
 
   /**
    * How often will checkpointing be done (in seconds) if # messages threshold
    * not met.
    */
-  optional int64 checkpoint_timeout = 4;
-
-  /**
-   * Messages are appended to chunk files.  The name of this chunk file is
-   * appended with the chunk number.
-   */
-  optional string chunk_name_format = 5;
-
-  /**
-   * Max number of bytes per topic chunk file.  New chunk files will be created
-   * when this many bytes have been written.
-   */
-  optional string chunk_size = 6;
+  int64 checkpoint_timeout = 4;
 
   /**
    * Controls whether to include a timestamp in the message.
    */
-  optional bool include_timestamp = 7;
+  bool include_timestamp = 5;
 
   /**
    * Controls whether an index file is to be created.
    */
-  optional bool create_indexes = 8;
+  bool create_indexes = 6;
 }
 
 message CreateTopicRequest {
@@ -72,11 +60,16 @@ message CreateTopicRequest {
 
 message PublishRequest {
   /**
+   * Name of the topic to publish to.
+   */
+  string topic_name = 1;
+
+  /**
    * Content can be bytes or strings.
    */
   oneof content {
-    bytes content_bytes = 1;
-    string content_string = 2;
+    bytes content_bytes = 2;
+    string content_string = 3;
   }
 }
 
@@ -89,21 +82,22 @@ message SubscribeRequest {
   /**
    * Offset of the topic to start consuming from.
    */
-  optional int64 offset = 2;
+  int64 offset = 2;
 
   /**
    * The end offset.  If this is specified, the subscription will end as soon as this offset is reached.
    */
-  optional int64 end_offset = 3;
+  int64 end_offset = 3;
 
   /**
    * Specifies whether offsets are indexes or timestamps (true = index, false = timestamp)
    */
-  optional bool by_offset = 4;
+  bool by_index = 4;
 }
 
 message Message {
-  int64 offset = 1;
-  int64 length = 2;
-  bytes content = 3;
+  bytes content = 1;
+  int64 offset = 2;
+  int64 length = 3;
+  int64 timestamp = 4;
 }

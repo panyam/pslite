@@ -1,7 +1,7 @@
 package services
 
 import (
-	// "context"
+	"context"
 	"fmt"
 	"github.com/panyam/klite/core"
 	protos "github.com/panyam/klite/protos"
@@ -26,42 +26,78 @@ func NewStreamerService(engine *core.KLEngine) *StreamerService {
 	return &out
 }
 
-func (s *StreamerService) Subscribe(subreq *protos.SubscribeRequest, stream protos.StreamerService_SubscribeServer) error {
-	topic := s.Engine.GetTopic(subreq.TopicName)
-	if topic == nil {
-		// Already exists and a client is listening to it so return error
-		return status.Error(codes.NotFound, fmt.Sprintf("Topic (%s) already running", subreq.TopicName))
+func FromTopicProto(topic *protos.Topic) *core.KLTopic {
+	return &core.KLTopic{
+		Name:              topic.Name,
+		TopicFolder:       topic.TopicFolder,
+		CheckpointTimeout: topic.CheckpointTimeout,
+		IncludeTimestamp:  topic.IncludeTimestamp,
+		CreateIndexes:     topic.CreateIndexes,
 	}
-	/*
-		newSocket := td.NewSocket(s.TDClient, nil)
-		sub := NewSubscription(name, newSocket)
-		s.subs[name] = sub
-		go sub.Socket.Connect()
+}
 
-		// Now read from the channel that was created and pump it out
-		for {
-			newMessage := <-sub.Socket.ReaderChannel()
-			if newMessage == nil {
+func ToTopicProto(topic *core.KLTopic) *protos.Topic {
+	return &protos.Topic{
+		Name:              topic.Name,
+		TopicFolder:       topic.TopicFolder,
+		CheckpointTimeout: topic.CheckpointTimeout,
+		IncludeTimestamp:  topic.IncludeTimestamp,
+		CreateIndexes:     topic.CreateIndexes,
+	}
+}
+
+func (s *StreamerService) CreateTopic(ctx context.Context, request *protos.CreateTopicRequest) (*protos.Topic, error) {
+	topic_proto := request.Topic
+	topic := FromTopicProto(topic_proto)
+	err := core.NewTopic(topic)
+	return ToTopicProto(topic), err
+}
+
+func (s *StreamerService) Publish(ctx context.Context, pubreq *protos.PublishRequest) (*protos.EmptyMessage, error) {
+	topic := s.Engine.GetTopic(pubreq.TopicName).(*core.KLTopic)
+	if topic == nil {
+		// Topic does not exist
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("Topic (%s) does not exist", pubreq.TopicName))
+	}
+	var msg []byte
+	switch pubreq.Content.(type) {
+	case *protos.PublishRequest_ContentString:
+		msg = []byte(pubreq.GetContentString())
+		break
+	case *protos.PublishRequest_ContentBytes:
+		msg = pubreq.GetContentBytes()
+		break
+	}
+	return nil, topic.Publish(msg, -1, -1)
+}
+
+func (s *StreamerService) Subscribe(subreq *protos.SubscribeRequest, stream protos.StreamerService_SubscribeServer) error {
+	topic := s.Engine.GetTopic(subreq.TopicName).(*core.KLTopic)
+	if topic == nil {
+		// Topic does not exist
+		return status.Error(codes.NotFound, fmt.Sprintf("Topic (%s) does not exist", subreq.TopicName))
+	}
+
+	readerChan, err := topic.Subscribe(subreq.Offset, subreq.EndOffset, subreq.ByIndex)
+	if err != nil {
+		return err
+	}
+	stop := false
+	for !stop {
+		select {
+		case nextMsg := <-readerChan:
+			if nextMsg == nil {
+				stop = true
+				// Done so we can stop now
 				break
 			}
-			info, err := structpb.NewStruct(newMessage)
-			if err != nil {
-				return err
-			}
-			msgproto := protos.Message{Info: info}
-			if err := stream.Send(&msgproto); err != nil {
-				log.Printf("%v.Send(%v) = %v", stream, &msgproto, err)
-				return err
-			}
+			break
+		case <-stream.Context().Done():
+			// Client disconnected so can stop now
+			close(readerChan)
+			stop = true
+			break
 		}
-		delete(s.subs, name)
-	*/
-	/*
-		reply, err := stream.CloseAndRecv()
-		if err != nil {
-			log.Printf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
-			return err
-		}
-	*/
+	}
 	return nil
 }

@@ -1,28 +1,28 @@
 package utils
 
 import (
-	"fmt"
-	"log"
-	"os/exec"
-	"runtime"
+	"io"
+	"os"
+	// "os/exec"
+	// "log"
+	// "runtime"
 )
 
 type StringMap = map[string]interface{}
 
-func OpenBrowser(url string) {
-	var err error
-
-	switch runtime.GOOS {
-	case "linux":
-		err = exec.Command("xdg-open", url).Start()
-	case "windows":
-		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
-	case "darwin":
-		err = exec.Command("open", url).Start()
-	default:
-		err = fmt.Errorf("unsupported platform")
-	}
+func IsDirEmpty(name string) (bool, error) {
+	f, err := os.Open(name)
 	if err != nil {
-		log.Fatal(err)
+		return false, err
 	}
+	defer f.Close()
+
+	// read in ONLY one file
+	_, err = f.Readdir(1)
+
+	// and if the file is EOF... well, the dir is empty.
+	if err == io.EOF {
+		return true, nil
+	}
+	return false, err
 }
