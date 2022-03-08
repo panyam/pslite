@@ -137,9 +137,7 @@ func OpenTopic(topic_folder string) (topic *KLTopic, err error) {
 	if err == nil {
 		ientry := topic.recordIndex.OffsetIndex(-1)
 		endpos := int64(ientry.FileOffset + ientry.RecordLength)
-		if _, err = topic.recordFile.Seek(endpos, io.SeekStart); err != nil {
-			return
-		}
+		err = topic.recordFile.Truncate(endpos)
 	}
 	return
 }

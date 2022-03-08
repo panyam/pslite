@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"io"
 	"log"
 	"sync"
 )
@@ -99,13 +98,14 @@ func (ki *KLIndex) ReloadIndex() error {
 	}
 	numEntries := int(ifSize / SIZEOF_INDEX_ENTRY)
 	ki.checkpointIndex = numEntries
-	if _, err = ki.indexFile.Seek(0, io.SeekStart); err != nil {
+	inbytes := make([]byte, SIZEOF_INDEX_ENTRY)
+	sub, err := ki.indexFile.NewSubscriber(0)
+	if err != nil {
 		return err
 	}
-	inbytes := make([]byte, SIZEOF_INDEX_ENTRY)
 	for i := 0; i < numEntries; i++ {
 		var ientry IndexEntry
-		_, err = ki.indexFile.file.Read(inbytes)
+		_, err = sub.Read(inbytes)
 		if err == nil {
 			err = ientry.FromBytes(inbytes)
 		}

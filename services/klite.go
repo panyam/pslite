@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/panyam/klite/core"
 	protos "github.com/panyam/klite/protos"
+	"time"
 	// "github.com/panyam/klite/utils"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -30,7 +31,7 @@ func FromTopicProto(topic *protos.Topic) *core.KLTopic {
 	return &core.KLTopic{
 		Name:              topic.Name,
 		TopicFolder:       topic.TopicFolder,
-		CheckpointTimeout: topic.CheckpointTimeout,
+		CheckpointTimeout: time.Duration(topic.CheckpointTimeout),
 		IncludeTimestamp:  topic.IncludeTimestamp,
 		CreateIndexes:     topic.CreateIndexes,
 	}
@@ -40,7 +41,7 @@ func ToTopicProto(topic *core.KLTopic) *protos.Topic {
 	return &protos.Topic{
 		Name:              topic.Name,
 		TopicFolder:       topic.TopicFolder,
-		CheckpointTimeout: topic.CheckpointTimeout,
+		CheckpointTimeout: int64(topic.CheckpointTimeout),
 		IncludeTimestamp:  topic.IncludeTimestamp,
 		CreateIndexes:     topic.CreateIndexes,
 	}
@@ -68,7 +69,7 @@ func (s *StreamerService) Publish(ctx context.Context, pubreq *protos.PublishReq
 		msg = pubreq.GetContentBytes()
 		break
 	}
-	return nil, topic.Publish(msg, -1, -1)
+	return nil, topic.Publish(msg)
 }
 
 func (s *StreamerService) Subscribe(subreq *protos.SubscribeRequest, stream protos.StreamerService_SubscribeServer) error {
