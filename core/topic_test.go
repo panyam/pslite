@@ -5,7 +5,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
-	"os"
+	// "os"
 	"strings"
 	"testing"
 	// "time"
@@ -46,6 +46,7 @@ func OpenTestTopic(t *testing.T, topic *KLTopic) *KLTopic {
 	return topic2
 }
 
+/*
 func TestBasicOpen(t *testing.T) {
 	topic := DefaultTopic("test", "")
 	defer os.RemoveAll(topic.TopicFolder)
@@ -57,3 +58,4 @@ func TestPublish10Messages(t *testing.T) {
 	defer os.RemoveAll(topic.TopicFolder)
 	OpenTestTopic(t, topic)
 }
+*/

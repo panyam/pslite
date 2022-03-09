@@ -2,6 +2,7 @@ package core
 
 import (
 	"io"
+	"log"
 	"os"
 	"sync"
 )
@@ -23,8 +24,6 @@ type LogFile struct {
 	file_path       string
 	file            *os.File
 	offset          int64
-	subIDCount      int64 // Tracks readers
-	subs            map[int64]*Subscriber
 	olistMutex      sync.RWMutex
 	offsetListeners []OffsetListener
 	msgBuffer       []LogEntry // Buffer of unsaved messages.
@@ -33,9 +32,7 @@ type LogFile struct {
 
 func LogFromFile(index_path string) (lf *LogFile, err error) {
 	lf = &LogFile{
-		file_path:  index_path,
-		subs:       make(map[int64]*Subscriber),
-		subIDCount: 0,
+		file_path: index_path,
 	}
 	lf.file, err = os.OpenFile(index_path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0755)
 	lf.offset, err = lf.Size()
@@ -46,10 +43,8 @@ func LogFromFile(index_path string) (lf *LogFile, err error) {
  * Creates a new subscriber at a given offset.
  */
 func (lf *LogFile) NewSubscriber(offset int64) (sub *Subscriber, err error) {
-	lf.subIDCount += 1
 	sub = &Subscriber{
 		logfile:    lf,
-		id:         lf.subIDCount,
 		offset:     0,
 		waiting:    false,
 		waitOffset: -1,
@@ -59,10 +54,9 @@ func (lf *LogFile) NewSubscriber(offset int64) (sub *Subscriber, err error) {
 	if err != nil {
 		close(sub.dataWaiter)
 	}
-	if offset > 0 {
-		sub.Seek(offset, 0)
+	if offset >= 0 {
+		_, err = sub.Seek(offset, io.SeekStart)
 	}
-	lf.subs[sub.id] = sub
 	return
 }
 
@@ -83,38 +77,40 @@ func (lf *LogFile) Publish(message []byte) error {
 /**
  * Checkpoints the latest state.
  */
-func (lf *LogFile) Checkpoint() error {
+func (lf *LogFile) Sync() error {
 	// First write the buffered records into the chunks
+	lf.bufferLock.Lock()
+	numWritten := 0
+	defer func() {
+		if numWritten >= len(lf.msgBuffer) {
+			lf.msgBuffer = nil
+		} else {
+			lf.msgBuffer = lf.msgBuffer[numWritten:]
+		}
+		lf.file.Sync()
+		lf.bufferLock.Unlock()
+		if numWritten > 0 {
+			lf.NotifyOffsets(lf.offset)
+		}
+	}()
+	log.Println("Flushing buffered messages...")
 	for _, msg := range lf.msgBuffer {
 		if _, err := lf.file.Write(msg.message); err != nil {
 			return err
 		}
+		lf.offset += int64(len(msg.message))
+		numWritten += 1
 	}
 	// saved so clear it
-	lf.msgBuffer = nil
 	return nil
-}
-
-/**
- * Appends data to the end of the log file.
- * Also notifies any subscribers waiting for data at the end of the file.
- */
-func (lf *LogFile) Write(b []byte) (n int, err error) {
-	n, err = lf.file.Write(b)
-	if n > 0 {
-		lf.offset += int64(n)
-	}
-	if err == nil {
-		lf.NotifyOffsets()
-	}
-	return
 }
 
 /**
  * Used by readers that have reached EOF to "wait" for data to be available.
  */
 func (lf *LogFile) WaitForOffset(minOffset int64, waiterChannel chan int64) {
-	if lf.offset >= minOffset {
+	if lf.offset > minOffset {
+		log.Println("Here?", lf.offset, minOffset)
 		waiterChannel <- lf.offset
 	} else {
 		// add to our list of waiters (these are already at EOF)
@@ -131,13 +127,14 @@ func (lf *LogFile) WaitForOffset(minOffset int64, waiterChannel chan int64) {
 /**
  * Notify all listenrs waiting to know when their min offset has been breached.
  */
-func (lf *LogFile) NotifyOffsets() {
+func (lf *LogFile) NotifyOffsets(offset int64) {
 	var newList []OffsetListener
+	log.Println("Notifying offsets: ", offset)
 	lf.olistMutex.Lock()
 	for _, olist := range lf.offsetListeners {
-		if lf.offset >= olist.minOffset {
+		if offset > olist.minOffset {
 			// have data
-			olist.waiterChannel <- lf.offset
+			olist.waiterChannel <- offset
 		} else {
 			newList = append(newList, olist)
 		}
@@ -183,27 +180,36 @@ type Subscriber struct {
 }
 
 func (s *Subscriber) Seek(offset int64, whence int) (int64, error) {
-	newoff, err := s.file.Seek(0, io.SeekStart)
+	newoff, err := s.file.Seek(offset, io.SeekStart)
 	if err == nil {
 		s.offset = newoff
 	}
 	return newoff, err
 }
 
-func (sub *Subscriber) Read(b []byte) (n int, err error) {
+func (sub *Subscriber) Read(b []byte, wait bool) (n int, err error) {
 	total := 0
+	currOff := sub.offset
+	endOff := currOff + int64(len(b))
 	for total < len(b) {
 		n, err = sub.file.Read(b[total:])
 		if err == nil {
 			total += n
 		}
+		if !wait || (err != nil && err != io.EOF) {
+			log.Println("Error: ", err)
+			return total, err
+		}
 		if total < len(b) {
-			newoff := sub.offset + int64(total)
-			sub.logfile.WaitForOffset(newoff, sub.dataWaiter)
+			log.Printf("Waiting at offset %d, to hit newoffset (%d), Len: %d", sub.offset, endOff, len(b))
+			sub.logfile.WaitForOffset(endOff, sub.dataWaiter)
+			// log.Println("Len of num waiters: ", len(sub.logfile.offsetListeners))
 			<-sub.dataWaiter
+			// log.Println("Returned from wait: ", endOff, off)
 		}
 	}
-	return
+	log.Println("Here: ", total, err)
+	return total, err
 }
 
 func (sub *Subscriber) Close() {

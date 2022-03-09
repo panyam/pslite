@@ -68,11 +68,11 @@ func (ki *KLIndex) Count() int {
 func (ki *KLIndex) OffsetIndex(offset int) *IndexEntry {
 	ki.bufferLock.RLock()
 	defer ki.bufferLock.RUnlock()
-	if offset < 0 {
-		return &ki.allEntries[len(ki.allEntries)+offset]
-	} else {
-		return &ki.allEntries[offset]
+	off := len(ki.allEntries) + offset
+	if off < 0 || off >= len(ki.allEntries) {
+		return nil
 	}
+	return &ki.allEntries[off]
 }
 
 func (ki *KLIndex) Add(recLength uint32, recTime int64, fileOffset uint32) *IndexEntry {
@@ -100,12 +100,13 @@ func (ki *KLIndex) ReloadIndex() error {
 	ki.checkpointIndex = numEntries
 	inbytes := make([]byte, SIZEOF_INDEX_ENTRY)
 	sub, err := ki.indexFile.NewSubscriber(0)
+	defer sub.Close()
 	if err != nil {
 		return err
 	}
 	for i := 0; i < numEntries; i++ {
 		var ientry IndexEntry
-		_, err = sub.Read(inbytes)
+		_, err = sub.Read(inbytes, true)
 		if err == nil {
 			err = ientry.FromBytes(inbytes)
 		}
@@ -128,7 +129,8 @@ func (ki *KLIndex) Checkpoint() {
 			fmt.Printf("Entry size (%d) does not match SOIE", len(b))
 			log.Fatal(nil)
 		}
-		ki.indexFile.Write(b)
+		ki.indexFile.Publish(b)
 		ki.checkpointIndex += 1
 	}
+	ki.indexFile.Sync()
 }

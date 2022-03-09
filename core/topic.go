@@ -136,7 +136,10 @@ func OpenTopic(topic_folder string) (topic *KLTopic, err error) {
 	topic.recordFile, err = LogFromFile(records_path)
 	if err == nil {
 		ientry := topic.recordIndex.OffsetIndex(-1)
-		endpos := int64(ientry.FileOffset + ientry.RecordLength)
+		endpos := int64(0)
+		if ientry != nil {
+			endpos = int64(ientry.FileOffset + ientry.RecordLength)
+		}
 		err = topic.recordFile.Truncate(endpos)
 	}
 	return
@@ -210,7 +213,7 @@ func (topic *KLTopic) CheckpointNeeded() bool {
  */
 func (topic *KLTopic) Checkpoint() {
 	// First write the buffered records into the chunks
-	topic.recordFile.Checkpoint()
+	topic.recordFile.Sync()
 	topic.recordIndex.Checkpoint()
 	topic.lastCheckpointAt = time.Now().UTC().UnixNano()
 }
