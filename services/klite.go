@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/panyam/klite/core"
 	protos "github.com/panyam/klite/protos"
-	"time"
 	// "github.com/panyam/klite/utils"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -27,35 +26,30 @@ func NewStreamerService(engine *core.KLEngine) *StreamerService {
 	return &out
 }
 
-func FromTopicProto(topic *protos.Topic) *core.KLTopic {
-	return &core.KLTopic{
-		Name:              topic.Name,
-		TopicFolder:       topic.TopicFolder,
-		CheckpointTimeout: time.Duration(topic.CheckpointTimeout),
-		IncludeTimestamp:  topic.IncludeTimestamp,
-		CreateIndexes:     topic.CreateIndexes,
+func FromTopicProto(topic *protos.Topic) *core.FileTopic {
+	return &core.FileTopic{
+		Name:        topic.Name,
+		RecordsPath: topic.RecordsPath,
+		IndexPath:   topic.IndexPath,
 	}
 }
 
-func ToTopicProto(topic *core.KLTopic) *protos.Topic {
+func ToTopicProto(topic *core.FileTopic) *protos.Topic {
 	return &protos.Topic{
-		Name:              topic.Name,
-		TopicFolder:       topic.TopicFolder,
-		CheckpointTimeout: int64(topic.CheckpointTimeout),
-		IncludeTimestamp:  topic.IncludeTimestamp,
-		CreateIndexes:     topic.CreateIndexes,
+		Name:        topic.Name,
+		RecordsPath: topic.RecordsPath,
+		IndexPath:   topic.IndexPath,
 	}
 }
 
 func (s *StreamerService) CreateTopic(ctx context.Context, request *protos.CreateTopicRequest) (*protos.Topic, error) {
 	topic_proto := request.Topic
-	topic := FromTopicProto(topic_proto)
-	err := core.NewTopic(topic)
+	topic, err := core.NewFileTopic(topic_proto.Name, topic_proto.RecordsPath, topic_proto.IndexPath)
 	return ToTopicProto(topic), err
 }
 
 func (s *StreamerService) Publish(ctx context.Context, pubreq *protos.PublishRequest) (*protos.EmptyMessage, error) {
-	topic := s.Engine.GetTopic(pubreq.TopicName).(*core.KLTopic)
+	topic := s.Engine.GetTopic(pubreq.TopicName).(*core.FileTopic)
 	if topic == nil {
 		// Topic does not exist
 		return nil, status.Error(codes.NotFound, fmt.Sprintf("Topic (%s) does not exist", pubreq.TopicName))
@@ -69,22 +63,26 @@ func (s *StreamerService) Publish(ctx context.Context, pubreq *protos.PublishReq
 		msg = pubreq.GetContentBytes()
 		break
 	}
-	return nil, topic.Publish(msg)
+	_, err := topic.Publish(msg)
+	return nil, err
 }
 
 func (s *StreamerService) Subscribe(subreq *protos.SubscribeRequest, stream protos.StreamerService_SubscribeServer) error {
-	topic := s.Engine.GetTopic(subreq.TopicName).(*core.KLTopic)
+	topic := s.Engine.GetTopic(subreq.TopicName).(*core.FileTopic)
 	if topic == nil {
 		// Topic does not exist
 		return status.Error(codes.NotFound, fmt.Sprintf("Topic (%s) does not exist", subreq.TopicName))
 	}
 
-	readerChan, err := topic.Subscribe(subreq.Offset, subreq.EndOffset, subreq.ByIndex)
+	offset := subreq.Offset
+	end_offset := subreq.EndOffset
+	curr_offset := subreq.Offset
+	sub, err := topic.Subscribe(offset)
 	if err != nil {
 		return err
 	}
 	stop := false
-	for !stop {
+	for !stop && (end_offset < offset || curr_offset < end_offset) {
 		select {
 		case nextMsg := <-readerChan:
 			if nextMsg == nil {

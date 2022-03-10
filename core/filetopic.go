@@ -111,8 +111,8 @@ func (topic *FileTopic) Subscribe(start_offset int64) (sub Subscriber, err error
 /**
  * Publish a new message into this topic.
  */
-func (topic *FileTopic) Publish(message []byte) error {
-	offset, err := topic.recordFile.Publish(message)
+func (topic *FileTopic) Publish(message []byte) (offset int64, err error) {
+	offset, err = topic.recordFile.Publish(message)
 	if err == nil {
 		L := uint32(len(message))
 		err = topic.PublishIndex(&IndexEntry{
@@ -121,7 +121,7 @@ func (topic *FileTopic) Publish(message []byte) error {
 		})
 	}
 	// notify readers we have a new message
-	return err
+	return
 }
 
 /**
@@ -232,7 +232,7 @@ func (fs *FileSubscriber) HasMore() bool {
  */
 func (fs *FileSubscriber) NextMessage(wait bool) (err error) {
 	fs.curr_read = 0
-	fs.curr_ientry, err = fs.NextIndexEntry(true)
+	fs.curr_ientry, err = fs.NextIndexEntry(wait)
 	return
 }
 
@@ -243,17 +243,23 @@ func (fs *FileSubscriber) Read(b []byte, wait bool) (n int, err error) {
 		}
 	}
 	remaining := int64(fs.curr_ientry.RecordLength) - fs.curr_read
+	if remaining <= 0 {
+		return 0, EOM
+	}
 	if int64(len(b)) > remaining {
 		b = b[:remaining]
 	}
 	n, err = fs.record_reader.Read(b, wait)
+	if n > 0 {
+		fs.curr_read += int64(n)
+	}
 	return
 }
 
 func (fs *FileSubscriber) NextIndexEntry(wait bool) (ientry *IndexEntry, err error) {
 	inbytes := make([]byte, SIZEOF_INDEX_ENTRY)
 	var n int
-	n, err = fs.index_reader.Read(inbytes, false)
+	n, err = fs.index_reader.Read(inbytes, wait)
 	if err == nil {
 		if n != SIZEOF_INDEX_ENTRY {
 			err = fmt.Errorf("Expected index size to be %d, Found: %d", SIZEOF_INDEX_ENTRY, n)

@@ -30,7 +30,12 @@ message Topic {
   /**
    * Folder where topic will be persisted.
    */
-  string topic_folder = 2;
+  string records_path = 2;
+
+  /**
+   * Folder where topic indexes will be persisted.
+   */
+  string index_path = 3;
 }
 
 message CreateTopicRequest {

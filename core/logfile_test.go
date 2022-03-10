@@ -34,7 +34,7 @@ func OpenLogFile(t *testing.T, fname string, clean bool) *LogFile {
 }
 
 func TestBasicNew(t *testing.T) {
-	OpenLogFile(t, "test", true)
+	OpenLogFile(t, "/tmp/test", true)
 }
 
 func Publish(lf *LogFile, contents string) {
@@ -61,7 +61,7 @@ func ReadSub(sub *LogIter, count int64, wait bool) string {
 }
 
 func TestBasicRW(t *testing.T) {
-	lf := OpenLogFile(t, "test", true)
+	lf := OpenLogFile(t, "/tmp/test", true)
 	Publish(lf, "Hello World 1")
 	Publish(lf, "Hello World 2")
 	Publish(lf, "Hello World 3")
@@ -79,7 +79,7 @@ func TestBasicRW(t *testing.T) {
 }
 
 func TestMultiReaders(t *testing.T) {
-	lf := OpenLogFile(t, "test", true)
+	lf := OpenLogFile(t, "/tmp/test", true)
 
 	// A way to check that an offset is monotonically increasing
 	lastOffset := int64(0)
