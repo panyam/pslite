@@ -7,14 +7,6 @@ import (
 	"sync"
 )
 
-/**
- * A Message implementation for representing published messages.
- */
-type LogEntry struct {
-	message    []byte
-	seekOffset int64
-}
-
 type OffsetListener struct {
 	minOffset     int64
 	waiterChannel chan int64
@@ -32,7 +24,7 @@ type LogFile struct {
 	OnOffsetReached OnOffsetReachedType
 }
 
-func LogFromFile(index_path string) (lf *LogFile, err error) {
+func NewLogFile(index_path string) (lf *LogFile, err error) {
 	lf = &LogFile{
 		file_path: index_path,
 	}
@@ -42,10 +34,10 @@ func LogFromFile(index_path string) (lf *LogFile, err error) {
 }
 
 /**
- * Creates a new subscriber at a given offset.
+ * Creates a new iterator at a given offset.
  */
-func (lf *LogFile) NewSubscriber(offset int64) (sub *Subscriber, err error) {
-	sub = &Subscriber{
+func (lf *LogFile) IterFrom(offset int64) (sub *LogIter, err error) {
+	sub = &LogIter{
 		logfile:    lf,
 		offset:     0,
 		waiting:    false,
@@ -57,24 +49,28 @@ func (lf *LogFile) NewSubscriber(offset int64) (sub *Subscriber, err error) {
 		close(sub.dataWaiter)
 	}
 	if offset >= 0 {
-		_, err = sub.Seek(offset, io.SeekStart)
+		_, err = sub.Seek(offset)
 	}
 	return
+}
+
+func (lf *LogFile) Offset() int64 {
+	return lf.offset
 }
 
 /**
  * Publish a new message into this topic.
  */
-func (lf *LogFile) Publish(message []byte) error {
+func (lf *LogFile) Publish(message []byte) (offset int64, err error) {
 	if len(message) > 0 {
-		if _, err := lf.file.Write(message); err != nil {
-			return err
+		if _, err = lf.file.Write(message); err == nil {
+			lf.file.Sync()
+			lf.offset += int64(len(message))
+			offset = lf.offset
+			lf.NotifyOffsets(lf.offset)
 		}
-		lf.file.Sync()
-		lf.offset += int64(len(message))
-		lf.NotifyOffsets(lf.offset)
 	}
-	return nil
+	return
 }
 
 /**
@@ -143,17 +139,17 @@ func (lf *LogFile) Size() (int64, error) {
  * Reader objects consume contents from the log file and will block
  * until data is available (ie written by the publisher)
  */
-type Subscriber struct {
-	id         int64 // ID of the subscriber
+type LogIter struct {
+	id         int64 // ID of the iterator
 	logfile    *LogFile
 	file       *os.File   // File pointer in read mode
-	offset     int64      // Subscriber's file offset
-	waiting    bool       // Tells if the subscriber is waiting for data is available
-	waitOffset int64      // Tells what is the min offset until which subscriber will wait
-	dataWaiter chan int64 // The channel on which to notify the subscriber to stop waiting
+	offset     int64      // LogIter's file offset
+	waiting    bool       // Tells if the iterator is waiting for data is available
+	waitOffset int64      // Tells what is the min offset until which iterator will wait
+	dataWaiter chan int64 // The channel on which to notify the iterator to stop waiting
 }
 
-func (s *Subscriber) Seek(offset int64, whence int) (int64, error) {
+func (s *LogIter) Seek(offset int64) (int64, error) {
 	newoff, err := s.file.Seek(offset, io.SeekStart)
 	if err == nil {
 		s.offset = newoff
@@ -161,7 +157,7 @@ func (s *Subscriber) Seek(offset int64, whence int) (int64, error) {
 	return newoff, err
 }
 
-func (sub *Subscriber) Read(b []byte, wait bool) (n int, err error) {
+func (sub *LogIter) Read(b []byte, wait bool) (n int, err error) {
 	total := 0
 	currOff := sub.offset
 	endOff := currOff + int64(len(b))
@@ -176,7 +172,7 @@ func (sub *Subscriber) Read(b []byte, wait bool) (n int, err error) {
 			return total, err
 		}
 		if total < len(b) {
-			log.Printf("Waiting at offset %d, to hit newoffset (%d), Len: %d", sub.offset, endOff, len(b))
+			// log.Printf("Waiting at offset %d, to hit newoffset (%d), Len: %d", sub.offset, endOff, len(b))
 			sub.logfile.WaitForOffset(endOff, sub.dataWaiter)
 			// log.Println("Len of num waiters: ", len(sub.logfile.offsetListeners))
 			<-sub.dataWaiter
@@ -186,7 +182,7 @@ func (sub *Subscriber) Read(b []byte, wait bool) (n int, err error) {
 	return total, err
 }
 
-func (sub *Subscriber) Close() {
+func (sub *LogIter) Close() {
 	close(sub.dataWaiter)
 	sub.file.Close()
 }

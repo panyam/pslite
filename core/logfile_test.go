@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"io"
-	"sync"
-	"time"
-	// "io/ioutil"
 	"log"
-	// "strings"
+	"sync"
 	"testing"
+	// "time"
+	// "io/ioutil"
+	// "strings"
 	// "time"
 )
 
 func OpenLogFile(t *testing.T, fname string, clean bool) *LogFile {
-	logfile, err := LogFromFile(fname)
+	logfile, err := NewLogFile(fname)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -38,20 +38,20 @@ func TestBasicNew(t *testing.T) {
 }
 
 func Publish(lf *LogFile, contents string) {
-	if err := lf.Publish([]byte(contents)); err != nil {
+	if _, err := lf.Publish([]byte(contents)); err != nil {
 		log.Fatal("Error Publishing: ", err)
 	}
 }
 
-func NewSub(lf *LogFile, offset int64) *Subscriber {
-	sub, err := lf.NewSubscriber(offset)
+func NewSub(lf *LogFile, offset int64) *LogIter {
+	sub, err := lf.IterFrom(offset)
 	if err != nil {
 		log.Fatal("Error Subscribing: ", err)
 	}
 	return sub
 }
 
-func ReadSub(sub *Subscriber, count int64, wait bool) string {
+func ReadSub(sub *LogIter, count int64, wait bool) string {
 	b := make([]byte, count)
 	n, err := sub.Read(b, wait)
 	if err != nil && err != io.EOF {
@@ -122,7 +122,7 @@ func TestMultiReaders(t *testing.T) {
 	for i := 0; len(x) < 1500; i += 1 {
 		s := fmt.Sprintf("Hello World %3d", i)
 		Publish(lf, s)
-		time.Sleep(10 * time.Millisecond)
+		// time.Sleep(1 * time.Millisecond)
 		x += s
 	}
 	log.Println("Writer Finished: ")

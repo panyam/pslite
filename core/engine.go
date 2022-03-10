@@ -1,58 +1,46 @@
 package core
 
 import (
+	"errors"
 	"fmt"
-	"io"
 )
 
-/**
- * Message interface for iterable and streamable messages.
- */
-type Message interface {
-	Reader() io.Reader
-	Length() int64
-	Timestamp() int64
-}
+var EOM = errors.New("EndOfMessage")
 
 /**
+ * A subscriber for a particular topic.
  * An interface over a message iterator.
- * The way a message reader is to be used is when a Read is called
+ * The way a subscriber is to be used is when a Read is called
  * on a topic the read is to be performed on a range.
  *
  * The client would do something like:
  *
- *		mr := topic.Read(start, end)
- *		buffer := create_buffer(TEN_MB)
- *		for nextMsg, err := mr.NextMessage() ; err == nil && nextMsg != nil {
- *			offset = 0
- *		  for {
- *				len, err := mr.Reader().ReadAt(buffer, offset)
- *		  	if len > 0 { offset += len }
- *				if len == 0 || err != nil {
- *					// All done so we can stop
- *					break
- *				}
- *			}
- *			// No need to do a "Forward" here since the Reader above
- *			// is an implementation that will kick off the next message to
- *			// be pointed to when it has exhausted the message's bytes
- *			// Forward is typically called if as part of the streaming
+ *		sub := topic.Subscribe(5)	// start subscribing from 5th message
+ * 		bytes := make([]byte, SOME_BUFF_SIZE)
+ *		while sub.HasMore() {
+ *		  L := nextMsg.Length()
+ *			len, err := sub.Read(buffer, true)
+ *			assert(len == L)
+ *			// Note: cannot read more than message size regardless of bytes buff size
+ *
+ *			// forward to the message if we need to If do *not* forward then
+ *			// Any subsequent calls to Read() above must return an EOM error
+ *			sub.NextMessage()
  *		}
+ *		It is upto the Reader above to ensure no more than L bytes are returned
+ *	  (eg even if bytes is a byt array with more capacity than L)
  */
-type MessageReader interface {
-	/**
-	 * Returns true if more messages exist.
-	 */
+type Subscriber interface {
+	Read(b []byte, wait bool) (n int, err error)
 	HasMore() bool
-	NextMessage() Message
+	NextMessage(wait bool) (err error)
+	Close()
 }
 
 type Topic interface {
 	MsgCount() int64
-	Publish(message []byte) error
-	// Subscribe(offset int64) (chan *io.ReaderAt, error)
-	Subscribe(start_offset int64, end_offset int64, by_index bool) (chan *io.ReaderAt, error)
-	SeekOffset(offset int64, as_offset bool) (*MessageReader, error)
+	Publish(message []byte) (int64, error)
+	Subscribe(msg_offset int64) (Subscriber, error)
 }
 
 /**

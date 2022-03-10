@@ -31,27 +31,6 @@ message Topic {
    * Folder where topic will be persisted.
    */
   string topic_folder = 2;
-
-  /**
-   * How often will checkpointing be performed (in number of messages)?
-   */
-  int32 checkpoint_threshold = 3;
-
-  /**
-   * How often will checkpointing be done (in seconds) if # messages threshold
-   * not met.
-   */
-  int64 checkpoint_timeout = 4;
-
-  /**
-   * Controls whether to include a timestamp in the message.
-   */
-  bool include_timestamp = 5;
-
-  /**
-   * Controls whether an index file is to be created.
-   */
-  bool create_indexes = 6;
 }
 
 message CreateTopicRequest {
