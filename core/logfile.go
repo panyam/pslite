@@ -20,14 +20,16 @@ type OffsetListener struct {
 	waiterChannel chan int64
 }
 
+type OnOffsetReachedType = func(offset int64)
+
 type LogFile struct {
 	file_path       string
 	file            *os.File
 	offset          int64
 	olistMutex      sync.RWMutex
 	offsetListeners []OffsetListener
-	msgBuffer       []LogEntry // Buffer of unsaved messages.
 	bufferLock      sync.RWMutex
+	OnOffsetReached OnOffsetReachedType
 }
 
 func LogFromFile(index_path string) (lf *LogFile, err error) {
@@ -64,44 +66,14 @@ func (lf *LogFile) NewSubscriber(offset int64) (sub *Subscriber, err error) {
  * Publish a new message into this topic.
  */
 func (lf *LogFile) Publish(message []byte) error {
-	msg := LogEntry{
-		message: message,
-	}
-	lf.bufferLock.Lock()
-	lf.msgBuffer = append(lf.msgBuffer, msg)
-	lf.bufferLock.Unlock()
-	// notify readers we have a new message
-	return nil
-}
-
-/**
- * Checkpoints the latest state.
- */
-func (lf *LogFile) Sync() error {
-	// First write the buffered records into the chunks
-	lf.bufferLock.Lock()
-	numWritten := 0
-	defer func() {
-		if numWritten >= len(lf.msgBuffer) {
-			lf.msgBuffer = nil
-		} else {
-			lf.msgBuffer = lf.msgBuffer[numWritten:]
-		}
-		lf.file.Sync()
-		lf.bufferLock.Unlock()
-		if numWritten > 0 {
-			lf.NotifyOffsets(lf.offset)
-		}
-	}()
-	log.Println("Flushing buffered messages...")
-	for _, msg := range lf.msgBuffer {
-		if _, err := lf.file.Write(msg.message); err != nil {
+	if len(message) > 0 {
+		if _, err := lf.file.Write(message); err != nil {
 			return err
 		}
-		lf.offset += int64(len(msg.message))
-		numWritten += 1
+		lf.file.Sync()
+		lf.offset += int64(len(message))
+		lf.NotifyOffsets(lf.offset)
 	}
-	// saved so clear it
 	return nil
 }
 
@@ -129,10 +101,12 @@ func (lf *LogFile) WaitForOffset(minOffset int64, waiterChannel chan int64) {
  */
 func (lf *LogFile) NotifyOffsets(offset int64) {
 	var newList []OffsetListener
-	log.Println("Notifying offsets: ", offset)
+	if lf.OnOffsetReached != nil {
+		lf.OnOffsetReached(offset)
+	}
 	lf.olistMutex.Lock()
 	for _, olist := range lf.offsetListeners {
-		if offset > olist.minOffset {
+		if offset >= olist.minOffset {
 			// have data
 			olist.waiterChannel <- offset
 		} else {
@@ -193,8 +167,9 @@ func (sub *Subscriber) Read(b []byte, wait bool) (n int, err error) {
 	endOff := currOff + int64(len(b))
 	for total < len(b) {
 		n, err = sub.file.Read(b[total:])
-		if err == nil {
+		if err == nil && n > 0 {
 			total += n
+			sub.offset += int64(n)
 		}
 		if !wait || (err != nil && err != io.EOF) {
 			log.Println("Error: ", err)
@@ -205,10 +180,9 @@ func (sub *Subscriber) Read(b []byte, wait bool) (n int, err error) {
 			sub.logfile.WaitForOffset(endOff, sub.dataWaiter)
 			// log.Println("Len of num waiters: ", len(sub.logfile.offsetListeners))
 			<-sub.dataWaiter
-			// log.Println("Returned from wait: ", endOff, off)
+			// log.Println("-------- Returned from wait: ", endOff, off)
 		}
 	}
-	log.Println("Here: ", total, err)
 	return total, err
 }
 

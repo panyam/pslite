@@ -213,7 +213,6 @@ func (topic *KLTopic) CheckpointNeeded() bool {
  */
 func (topic *KLTopic) Checkpoint() {
 	// First write the buffered records into the chunks
-	topic.recordFile.Sync()
 	topic.recordIndex.Checkpoint()
 	topic.lastCheckpointAt = time.Now().UTC().UnixNano()
 }

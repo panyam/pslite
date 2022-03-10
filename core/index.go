@@ -120,7 +120,7 @@ func (ki *KLIndex) ReloadIndex() error {
 /**
  * Checkpoints the latest state.
  */
-func (ki *KLIndex) Checkpoint() {
+func (ki *KLIndex) Checkpoint() (err error) {
 	// First write the buffered records into the chunks
 	for ki.checkpointIndex < len(ki.allEntries) {
 		ientry := ki.allEntries[ki.checkpointIndex]
@@ -129,8 +129,10 @@ func (ki *KLIndex) Checkpoint() {
 			fmt.Printf("Entry size (%d) does not match SOIE", len(b))
 			log.Fatal(nil)
 		}
-		ki.indexFile.Publish(b)
+		if err = ki.indexFile.Publish(b); err != nil {
+			break
+		}
 		ki.checkpointIndex += 1
 	}
-	ki.indexFile.Sync()
+	return
 }

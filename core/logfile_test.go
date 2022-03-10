@@ -65,7 +65,6 @@ func TestBasicRW(t *testing.T) {
 	Publish(lf, "Hello World 1")
 	Publish(lf, "Hello World 2")
 	Publish(lf, "Hello World 3")
-	lf.Sync()
 
 	r1 := NewSub(lf, 0)
 	r2 := NewSub(lf, 13)
@@ -82,12 +81,21 @@ func TestBasicRW(t *testing.T) {
 func TestMultiReaders(t *testing.T) {
 	lf := OpenLogFile(t, "test", true)
 
+	// A way to check that an offset is monotonically increasing
+	lastOffset := int64(0)
+	lf.OnOffsetReached = func(offset int64) {
+		if offset <= lastOffset {
+			log.Fatalf("Offset regressed: %d, lastOffset: %d", offset, lastOffset)
+		}
+		lastOffset = offset
+		// log.Println("Notifying offsets: ", offset)
+	}
+
 	reader := func(i int, rlen int64, total int64, res chan string, wg *sync.WaitGroup) {
 		defer wg.Done()
 		sub := NewSub(lf, 0)
 		out := ""
 		nread := int64(0)
-		log.Println("Started reader: ", i)
 		for nread < total {
 			remaining := rlen
 			if remaining > (total - nread) {
@@ -98,25 +106,23 @@ func TestMultiReaders(t *testing.T) {
 		}
 		log.Println("Finished reader: ", i)
 		res <- out
-		log.Println("Sent reader result: ", i, len(out))
 	}
 
 	var cs []chan string
 	var wg sync.WaitGroup
-	for i := 1; i <= 1; i++ {
+	for i := 1; i <= 5; i++ {
 		c := make(chan string, 1)
 		cs = append(cs, c)
 		wg.Add(1)
-		go reader(i-1, int64(i*15), 1005, c, &wg)
+		go reader(i-1, int64(i*15), 1500, c, &wg)
 	}
 	// Wait for all go routines to finish
 	x := ""
 	log.Println("Started writer: ")
-	for i := 0; len(x) < 1005; i += 1 {
+	for i := 0; len(x) < 1500; i += 1 {
 		s := fmt.Sprintf("Hello World %3d", i)
 		Publish(lf, s)
-		lf.Sync()
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 		x += s
 	}
 	log.Println("Writer Finished: ")
