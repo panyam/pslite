@@ -8,6 +8,15 @@ import (
 var EOM = errors.New("EndOfMessage")
 
 /**
+ * Generic topic interface.
+ */
+type Topic interface {
+	MsgCount() int64
+	Publish(message []byte) (int64, error)
+	Subscribe(msg_offset int64) (Subscriber, error)
+}
+
+/**
  * A subscriber for a particular topic.
  * An interface over a message iterator.
  * The way a subscriber is to be used is when a Read is called
@@ -31,16 +40,14 @@ var EOM = errors.New("EndOfMessage")
  *	  (eg even if bytes is a byt array with more capacity than L)
  */
 type Subscriber interface {
-	Read(b []byte, wait bool) (n int, err error)
 	HasMore() bool
-	NextMessage(wait bool) (err error)
+	NextMessage(wait bool) (msg Message, err error)
 	Close()
 }
 
-type Topic interface {
-	MsgCount() int64
-	Publish(message []byte) (int64, error)
-	Subscribe(msg_offset int64) (Subscriber, error)
+type Message interface {
+	Length() int64
+	Read(b []byte, wait bool) (n int, err error)
 }
 
 /**

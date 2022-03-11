@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/panyam/klite/core"
 	protos "github.com/panyam/klite/protos"
+	"log"
 	// "github.com/panyam/klite/utils"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -12,14 +13,14 @@ import (
 	// "log"
 )
 
-type StreamerService struct {
-	protos.UnimplementedStreamerServiceServer
+type KLiteService struct {
+	protos.UnimplementedKLiteServiceServer
 	Engine *core.KLEngine
 	subs   map[string]*Subscription
 }
 
-func NewStreamerService(engine *core.KLEngine) *StreamerService {
-	out := StreamerService{
+func NewKLiteService(engine *core.KLEngine) *KLiteService {
+	out := KLiteService{
 		Engine: engine,
 		subs:   make(map[string]*Subscription),
 	}
@@ -42,14 +43,20 @@ func ToTopicProto(topic *core.FileTopic) *protos.Topic {
 	}
 }
 
-func (s *StreamerService) CreateTopic(ctx context.Context, request *protos.CreateTopicRequest) (*protos.Topic, error) {
+func (s *KLiteService) OpenTopic(ctx context.Context, request *protos.OpenTopicRequest) (out *protos.EmptyMessage, err error) {
 	topic_proto := request.Topic
-	topic, err := core.NewFileTopic(topic_proto.Name, topic_proto.RecordsPath, topic_proto.IndexPath)
-	return ToTopicProto(topic), err
+	topic := s.Engine.GetTopic(topic_proto.Name)
+	if topic == nil {
+		topic, err = core.NewFileTopic(topic_proto.Name, topic_proto.RecordsPath, topic_proto.IndexPath)
+		if err == nil {
+			s.Engine.AddTopic(topic_proto.Name, topic)
+		}
+	}
+	return &protos.EmptyMessage{}, err
 }
 
-func (s *StreamerService) Publish(ctx context.Context, pubreq *protos.PublishRequest) (*protos.EmptyMessage, error) {
-	topic := s.Engine.GetTopic(pubreq.TopicName).(*core.FileTopic)
+func (s *KLiteService) Publish(ctx context.Context, pubreq *protos.PublishRequest) (*protos.EmptyMessage, error) {
+	topic := s.Engine.GetTopic(pubreq.TopicName)
 	if topic == nil {
 		// Topic does not exist
 		return nil, status.Error(codes.NotFound, fmt.Sprintf("Topic (%s) does not exist", pubreq.TopicName))
@@ -64,11 +71,11 @@ func (s *StreamerService) Publish(ctx context.Context, pubreq *protos.PublishReq
 		break
 	}
 	_, err := topic.Publish(msg)
-	return nil, err
+	return &protos.EmptyMessage{}, err
 }
 
-func (s *StreamerService) Subscribe(subreq *protos.SubscribeRequest, stream protos.StreamerService_SubscribeServer) error {
-	topic := s.Engine.GetTopic(subreq.TopicName).(*core.FileTopic)
+func (s *KLiteService) Subscribe(subreq *protos.SubscribeRequest, stream protos.KLiteService_SubscribeServer) error {
+	topic := s.Engine.GetTopic(subreq.TopicName)
 	if topic == nil {
 		// Topic does not exist
 		return status.Error(codes.NotFound, fmt.Sprintf("Topic (%s) does not exist", subreq.TopicName))
@@ -76,27 +83,46 @@ func (s *StreamerService) Subscribe(subreq *protos.SubscribeRequest, stream prot
 
 	offset := subreq.Offset
 	end_offset := subreq.EndOffset
-	curr_offset := subreq.Offset
 	sub, err := topic.Subscribe(offset)
 	if err != nil {
 		return err
 	}
-	stop := false
-	for !stop && (end_offset < offset || curr_offset < end_offset) {
+	closed := false
+	go func() {
 		select {
-		case nextMsg := <-readerChan:
-			if nextMsg == nil {
-				stop = true
-				// Done so we can stop now
-				break
-			}
-			break
 		case <-stream.Context().Done():
 			// Client disconnected so can stop now
-			close(readerChan)
-			stop = true
+			log.Println("Client disconnected.")
+			closed = true
+			sub.Close()
+		}
+	}()
+
+	var msg core.Message
+	buffer := make([]byte, 4096)
+	for curr_offset := subreq.Offset; end_offset < offset || curr_offset < end_offset; curr_offset += 1 {
+		msg, err = sub.NextMessage(end_offset < offset)
+		if err == nil {
+			log.Printf("Msg Offset: %d, Len: %d", curr_offset, msg.Length())
+			if msg.Length() > int64(len(buffer)) {
+				buffer = make([]byte, msg.Length())
+			}
+			_, err = msg.Read(buffer[:msg.Length()], true)
+		}
+		if err != nil {
 			break
+		} else {
+			data := buffer[:msg.Length()]
+			msg := protos.Message{Content: data}
+			if err = stream.Send(&msg); err != nil {
+				log.Printf("%v.Send(%v) = %v", stream, &msg, err)
+				break
+			}
 		}
 	}
-	return nil
+
+	if !closed {
+		sub.Close()
+	}
+	return err
 }

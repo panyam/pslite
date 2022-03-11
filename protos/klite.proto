@@ -15,8 +15,8 @@ message EmptyMessage {}
  *  When the client is ready they can start listening on the subscription
  *  when the server would send a stream of events/updates.
  */
-service StreamerService {
-  rpc CreateTopic(CreateTopicRequest) returns (Topic);
+service KLiteService {
+  rpc OpenTopic(OpenTopicRequest) returns (EmptyMessage);
   rpc Publish(PublishRequest) returns (EmptyMessage);
   rpc Subscribe(SubscribeRequest) returns (stream Message);
 }
@@ -38,7 +38,7 @@ message Topic {
   string index_path = 3;
 }
 
-message CreateTopicRequest {
+message OpenTopicRequest {
   Topic topic = 1;
 }
 
@@ -72,16 +72,10 @@ message SubscribeRequest {
    * The end offset.  If this is specified, the subscription will end as soon as this offset is reached.
    */
   int64 end_offset = 3;
-
-  /**
-   * Specifies whether offsets are indexes or timestamps (true = index, false = timestamp)
-   */
-  bool by_index = 4;
 }
 
 message Message {
   bytes content = 1;
   int64 offset = 2;
   int64 length = 3;
-  int64 timestamp = 4;
 }

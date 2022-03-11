@@ -14,47 +14,47 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// StreamerServiceClient is the client API for StreamerService service.
+// KLiteServiceClient is the client API for KLiteService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type StreamerServiceClient interface {
-	CreateTopic(ctx context.Context, in *CreateTopicRequest, opts ...grpc.CallOption) (*Topic, error)
+type KLiteServiceClient interface {
+	OpenTopic(ctx context.Context, in *OpenTopicRequest, opts ...grpc.CallOption) (*EmptyMessage, error)
 	Publish(ctx context.Context, in *PublishRequest, opts ...grpc.CallOption) (*EmptyMessage, error)
-	Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (StreamerService_SubscribeClient, error)
+	Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (KLiteService_SubscribeClient, error)
 }
 
-type streamerServiceClient struct {
+type kLiteServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewStreamerServiceClient(cc grpc.ClientConnInterface) StreamerServiceClient {
-	return &streamerServiceClient{cc}
+func NewKLiteServiceClient(cc grpc.ClientConnInterface) KLiteServiceClient {
+	return &kLiteServiceClient{cc}
 }
 
-func (c *streamerServiceClient) CreateTopic(ctx context.Context, in *CreateTopicRequest, opts ...grpc.CallOption) (*Topic, error) {
-	out := new(Topic)
-	err := c.cc.Invoke(ctx, "/protos.StreamerService/CreateTopic", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *streamerServiceClient) Publish(ctx context.Context, in *PublishRequest, opts ...grpc.CallOption) (*EmptyMessage, error) {
+func (c *kLiteServiceClient) OpenTopic(ctx context.Context, in *OpenTopicRequest, opts ...grpc.CallOption) (*EmptyMessage, error) {
 	out := new(EmptyMessage)
-	err := c.cc.Invoke(ctx, "/protos.StreamerService/Publish", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/protos.KLiteService/OpenTopic", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *streamerServiceClient) Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (StreamerService_SubscribeClient, error) {
-	stream, err := c.cc.NewStream(ctx, &StreamerService_ServiceDesc.Streams[0], "/protos.StreamerService/Subscribe", opts...)
+func (c *kLiteServiceClient) Publish(ctx context.Context, in *PublishRequest, opts ...grpc.CallOption) (*EmptyMessage, error) {
+	out := new(EmptyMessage)
+	err := c.cc.Invoke(ctx, "/protos.KLiteService/Publish", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &streamerServiceSubscribeClient{stream}
+	return out, nil
+}
+
+func (c *kLiteServiceClient) Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (KLiteService_SubscribeClient, error) {
+	stream, err := c.cc.NewStream(ctx, &KLiteService_ServiceDesc.Streams[0], "/protos.KLiteService/Subscribe", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &kLiteServiceSubscribeClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -64,16 +64,16 @@ func (c *streamerServiceClient) Subscribe(ctx context.Context, in *SubscribeRequ
 	return x, nil
 }
 
-type StreamerService_SubscribeClient interface {
+type KLiteService_SubscribeClient interface {
 	Recv() (*Message, error)
 	grpc.ClientStream
 }
 
-type streamerServiceSubscribeClient struct {
+type kLiteServiceSubscribeClient struct {
 	grpc.ClientStream
 }
 
-func (x *streamerServiceSubscribeClient) Recv() (*Message, error) {
+func (x *kLiteServiceSubscribeClient) Recv() (*Message, error) {
 	m := new(Message)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -81,119 +81,119 @@ func (x *streamerServiceSubscribeClient) Recv() (*Message, error) {
 	return m, nil
 }
 
-// StreamerServiceServer is the server API for StreamerService service.
-// All implementations must embed UnimplementedStreamerServiceServer
+// KLiteServiceServer is the server API for KLiteService service.
+// All implementations must embed UnimplementedKLiteServiceServer
 // for forward compatibility
-type StreamerServiceServer interface {
-	CreateTopic(context.Context, *CreateTopicRequest) (*Topic, error)
+type KLiteServiceServer interface {
+	OpenTopic(context.Context, *OpenTopicRequest) (*EmptyMessage, error)
 	Publish(context.Context, *PublishRequest) (*EmptyMessage, error)
-	Subscribe(*SubscribeRequest, StreamerService_SubscribeServer) error
-	mustEmbedUnimplementedStreamerServiceServer()
+	Subscribe(*SubscribeRequest, KLiteService_SubscribeServer) error
+	mustEmbedUnimplementedKLiteServiceServer()
 }
 
-// UnimplementedStreamerServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedStreamerServiceServer struct {
+// UnimplementedKLiteServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedKLiteServiceServer struct {
 }
 
-func (UnimplementedStreamerServiceServer) CreateTopic(context.Context, *CreateTopicRequest) (*Topic, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateTopic not implemented")
+func (UnimplementedKLiteServiceServer) OpenTopic(context.Context, *OpenTopicRequest) (*EmptyMessage, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method OpenTopic not implemented")
 }
-func (UnimplementedStreamerServiceServer) Publish(context.Context, *PublishRequest) (*EmptyMessage, error) {
+func (UnimplementedKLiteServiceServer) Publish(context.Context, *PublishRequest) (*EmptyMessage, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Publish not implemented")
 }
-func (UnimplementedStreamerServiceServer) Subscribe(*SubscribeRequest, StreamerService_SubscribeServer) error {
+func (UnimplementedKLiteServiceServer) Subscribe(*SubscribeRequest, KLiteService_SubscribeServer) error {
 	return status.Errorf(codes.Unimplemented, "method Subscribe not implemented")
 }
-func (UnimplementedStreamerServiceServer) mustEmbedUnimplementedStreamerServiceServer() {}
+func (UnimplementedKLiteServiceServer) mustEmbedUnimplementedKLiteServiceServer() {}
 
-// UnsafeStreamerServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to StreamerServiceServer will
+// UnsafeKLiteServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to KLiteServiceServer will
 // result in compilation errors.
-type UnsafeStreamerServiceServer interface {
-	mustEmbedUnimplementedStreamerServiceServer()
+type UnsafeKLiteServiceServer interface {
+	mustEmbedUnimplementedKLiteServiceServer()
 }
 
-func RegisterStreamerServiceServer(s grpc.ServiceRegistrar, srv StreamerServiceServer) {
-	s.RegisterService(&StreamerService_ServiceDesc, srv)
+func RegisterKLiteServiceServer(s grpc.ServiceRegistrar, srv KLiteServiceServer) {
+	s.RegisterService(&KLiteService_ServiceDesc, srv)
 }
 
-func _StreamerService_CreateTopic_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateTopicRequest)
+func _KLiteService_OpenTopic_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OpenTopicRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(StreamerServiceServer).CreateTopic(ctx, in)
+		return srv.(KLiteServiceServer).OpenTopic(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/protos.StreamerService/CreateTopic",
+		FullMethod: "/protos.KLiteService/OpenTopic",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StreamerServiceServer).CreateTopic(ctx, req.(*CreateTopicRequest))
+		return srv.(KLiteServiceServer).OpenTopic(ctx, req.(*OpenTopicRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _StreamerService_Publish_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _KLiteService_Publish_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PublishRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(StreamerServiceServer).Publish(ctx, in)
+		return srv.(KLiteServiceServer).Publish(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/protos.StreamerService/Publish",
+		FullMethod: "/protos.KLiteService/Publish",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StreamerServiceServer).Publish(ctx, req.(*PublishRequest))
+		return srv.(KLiteServiceServer).Publish(ctx, req.(*PublishRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _StreamerService_Subscribe_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _KLiteService_Subscribe_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(SubscribeRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(StreamerServiceServer).Subscribe(m, &streamerServiceSubscribeServer{stream})
+	return srv.(KLiteServiceServer).Subscribe(m, &kLiteServiceSubscribeServer{stream})
 }
 
-type StreamerService_SubscribeServer interface {
+type KLiteService_SubscribeServer interface {
 	Send(*Message) error
 	grpc.ServerStream
 }
 
-type streamerServiceSubscribeServer struct {
+type kLiteServiceSubscribeServer struct {
 	grpc.ServerStream
 }
 
-func (x *streamerServiceSubscribeServer) Send(m *Message) error {
+func (x *kLiteServiceSubscribeServer) Send(m *Message) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-// StreamerService_ServiceDesc is the grpc.ServiceDesc for StreamerService service.
+// KLiteService_ServiceDesc is the grpc.ServiceDesc for KLiteService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var StreamerService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "protos.StreamerService",
-	HandlerType: (*StreamerServiceServer)(nil),
+var KLiteService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "protos.KLiteService",
+	HandlerType: (*KLiteServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "CreateTopic",
-			Handler:    _StreamerService_CreateTopic_Handler,
+			MethodName: "OpenTopic",
+			Handler:    _KLiteService_OpenTopic_Handler,
 		},
 		{
 			MethodName: "Publish",
-			Handler:    _StreamerService_Publish_Handler,
+			Handler:    _KLiteService_Publish_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Subscribe",
-			Handler:       _StreamerService_Subscribe_Handler,
+			Handler:       _KLiteService_Subscribe_Handler,
 			ServerStreams: true,
 		},
 	},

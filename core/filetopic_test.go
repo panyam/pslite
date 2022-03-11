@@ -8,7 +8,7 @@ import (
 	"log"
 	"os"
 	"testing"
-	// "time"
+	"time"
 )
 
 func OpenTopic(t *testing.T, n string, rp string, ip string, reset bool) *FileTopic {
@@ -35,6 +35,8 @@ func TestBasicOpen(t *testing.T) {
 }
 
 func TestPublish10Messages(t *testing.T) {
+	log.Println("Started TestPublish10Messages")
+	defer log.Println("Finished TestPublish10Messages")
 	topic := OpenTopic(t, "test", "/tmp/test2", "/tmp/index2", true)
 	for i := 0; i < 10; i++ {
 		topic.Publish([]byte(fmt.Sprintf("Hello World %03d\n", i)))
@@ -49,20 +51,25 @@ func TestPublish10Messages(t *testing.T) {
 	buffer := make([]byte, 1024)
 	for i := 0; i < 10; i++ {
 		msg := fmt.Sprintf("Hello World %03d\n", i)
-		n, err := sub.Read(buffer, true)
+		m, err := sub.NextMessage(true)
+		if err != nil {
+			log.Fatal(err)
+		}
+		n, err := m.Read(buffer, true)
 		if err != nil {
 			log.Fatal(err)
 		}
 		assert.Equal(t, n, 16, fmt.Sprintf("Messages are only 16 bytes in length, Found: %d", n))
 		assert.Equal(t, msg, string(buffer[:n]), "Messages dont match")
-		n, err = sub.Read(buffer, true)
+		n, err = m.Read(buffer, true)
 		assert.Equal(t, n, 0, "Should have no more messages until nextMessage")
 		assert.Equal(t, err, EOM, "Should have no more messages until nextMessage")
-		sub.NextMessage(i < 9)
 	}
 }
 
 func TestPublish10MessagesAndReadDiffOffset(t *testing.T) {
+	log.Println("Started TestPublish10MessagesAndReadDiffOffset")
+	defer log.Println("Finished TestPublish10MessagesAndReadDiffOffset")
 	topic := OpenTopic(t, "test", "/tmp/test3", "/tmp/index3", true)
 	for i := 0; i < 10; i++ {
 		topic.Publish([]byte(fmt.Sprintf("Hello World %03d\n", i)))
@@ -77,15 +84,56 @@ func TestPublish10MessagesAndReadDiffOffset(t *testing.T) {
 	buffer := make([]byte, 1024)
 	for i := 2; i < 10; i++ {
 		msg := fmt.Sprintf("Hello World %03d\n", i)
-		n, err := sub.Read(buffer, true)
+		m, err := sub.NextMessage(true)
+		if err != nil {
+			log.Fatal(err)
+		}
+		n, err := m.Read(buffer, true)
 		if err != nil {
 			log.Fatal(err)
 		}
 		assert.Equal(t, n, 16, fmt.Sprintf("Messages are only 16 bytes in length, Found: %d", n))
 		assert.Equal(t, msg, string(buffer[:n]), "Messages dont match")
-		n, err = sub.Read(buffer, true)
+		n, err = m.Read(buffer, true)
 		assert.Equal(t, n, 0, "Should have no more messages until nextMessage")
 		assert.Equal(t, err, EOM, "Should have no more messages until nextMessage")
-		sub.NextMessage(i < 9)
 	}
+}
+
+// Test closing of a subcriber while it is waiting for messages to be published.
+// This should close and close cleanly.
+func TestClosingSubscriber(t *testing.T) {
+	log.Println("Started TestClosingSubscriber")
+	defer log.Println("Finished TestClosingSubscriber")
+	topic := OpenTopic(t, "test", "/tmp/test4", "/tmp/index4", true)
+	ourchan := make(chan error)
+	sub, err := topic.Subscribe(2)
+	go func() {
+		if err != nil {
+			log.Fatal(err)
+		}
+		buffer := make([]byte, 1024)
+		m, err := sub.NextMessage(true)
+		if err == nil {
+			n, err := m.Read(buffer, true)
+			log.Println("Read finished, n, err: ", n, err)
+		}
+		ourchan <- err
+	}()
+
+	time.Sleep(1 * time.Second)
+	sub.Close()
+
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+	tickerCalled := false
+	select {
+	case err = <-ourchan:
+		break
+	case <-ticker.C:
+		tickerCalled = true
+		break
+	}
+	assert.Equal(t, fmt.Sprint(err), "read /tmp/index4: file already closed", "Err should be about file being closed")
+	assert.Equal(t, tickerCalled, false, "Ticker should not have been received first")
 }

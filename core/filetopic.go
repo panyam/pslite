@@ -91,24 +91,6 @@ func (topic *FileTopic) MsgCount() int64 {
 }
 
 /**
- * Subscribe to this topic at a given offset and return a channel from which
- * newer published messages can be sent to.
- */
-func (topic *FileTopic) Subscribe(start_offset int64) (sub Subscriber, err error) {
-	index_reader, err := topic.indexFile.IterFrom(start_offset * int64(SIZEOF_INDEX_ENTRY))
-	if err != nil {
-		return nil, err
-	}
-	out := &FileSubscriber{
-		topic:        topic,
-		index_reader: index_reader,
-	}
-	out.NextMessage(true)
-	sub = out
-	return sub, nil
-}
-
-/**
  * Publish a new message into this topic.
  */
 func (topic *FileTopic) Publish(message []byte) (offset int64, err error) {
@@ -206,12 +188,28 @@ func (topic *FileTopic) IndexAtOffset(offset int64) (ientry *IndexEntry, err err
 	return
 }
 
+/**
+ * Subscribe to this topic at a given offset and return a channel from which
+ * newer published messages can be sent to.
+ */
+func (topic *FileTopic) Subscribe(start_offset int64) (sub Subscriber, err error) {
+	index_reader, err := topic.indexFile.IterFrom(start_offset * int64(SIZEOF_INDEX_ENTRY))
+	if err != nil {
+		return nil, err
+	}
+	out := &FileSubscriber{
+		topic:        topic,
+		index_reader: index_reader,
+	}
+	sub = out
+	return sub, nil
+}
+
 type FileSubscriber struct {
 	topic         *FileTopic
 	index_reader  *LogIter
 	record_reader *LogIter
 	curr_ientry   *IndexEntry
-	curr_read     int64
 }
 
 /**
@@ -219,41 +217,16 @@ type FileSubscriber struct {
  */
 func (fs *FileSubscriber) Close() {
 	fs.curr_ientry = nil
-	fs.index_reader.Close()
-	fs.record_reader.Close()
+	if fs.index_reader != nil {
+		fs.index_reader.Close()
+	}
+	if fs.record_reader != nil {
+		fs.record_reader.Close()
+	}
 }
 
 func (fs *FileSubscriber) HasMore() bool {
 	return fs.curr_ientry != nil
-}
-
-/**
- * Proceed to the next message.
- */
-func (fs *FileSubscriber) NextMessage(wait bool) (err error) {
-	fs.curr_read = 0
-	fs.curr_ientry, err = fs.NextIndexEntry(wait)
-	return
-}
-
-func (fs *FileSubscriber) Read(b []byte, wait bool) (n int, err error) {
-	if fs.record_reader == nil {
-		if fs.record_reader, err = fs.topic.recordFile.IterFrom(int64(fs.curr_ientry.FileOffset)); err != nil {
-			return
-		}
-	}
-	remaining := int64(fs.curr_ientry.RecordLength) - fs.curr_read
-	if remaining <= 0 {
-		return 0, EOM
-	}
-	if int64(len(b)) > remaining {
-		b = b[:remaining]
-	}
-	n, err = fs.record_reader.Read(b, wait)
-	if n > 0 {
-		fs.curr_read += int64(n)
-	}
-	return
 }
 
 func (fs *FileSubscriber) NextIndexEntry(wait bool) (ientry *IndexEntry, err error) {
@@ -266,6 +239,51 @@ func (fs *FileSubscriber) NextIndexEntry(wait bool) (ientry *IndexEntry, err err
 		}
 		ientry = &IndexEntry{}
 		err = ientry.FromBytes(inbytes)
+	}
+	return
+}
+
+/**
+ * Proceed to the next message.
+ */
+func (fs *FileSubscriber) NextMessage(wait bool) (msg Message, err error) {
+	fs.curr_ientry, err = fs.NextIndexEntry(wait)
+	if err != nil {
+		return
+	}
+	// Initialize the record reader too if needed
+	off := int64(fs.curr_ientry.FileOffset)
+	fs.record_reader, err = fs.topic.recordFile.IterFrom(off)
+	if err != nil {
+		return
+	}
+	msg = &FileMessage{
+		sub:       fs,
+		curr_read: 0,
+	}
+	return
+}
+
+type FileMessage struct {
+	sub       *FileSubscriber
+	curr_read int64
+}
+
+func (m *FileMessage) Length() int64 {
+	return int64(m.sub.curr_ientry.RecordLength)
+}
+
+func (m *FileMessage) Read(b []byte, wait bool) (n int, err error) {
+	remaining := m.Length() - m.curr_read
+	if remaining <= 0 {
+		return 0, EOM
+	}
+	if int64(len(b)) > remaining {
+		b = b[:remaining]
+	}
+	n, err = m.sub.record_reader.Read(b, wait)
+	if n > 0 {
+		m.curr_read += int64(n)
 	}
 	return
 }

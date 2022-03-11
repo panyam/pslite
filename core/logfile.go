@@ -49,7 +49,7 @@ func (lf *LogFile) IterFrom(offset int64) (sub *LogIter, err error) {
 		close(sub.dataWaiter)
 	}
 	if offset >= 0 {
-		_, err = sub.Seek(offset)
+		_, err = sub.SeekOffset(offset)
 	}
 	return
 }
@@ -147,9 +147,10 @@ type LogIter struct {
 	waiting    bool       // Tells if the iterator is waiting for data is available
 	waitOffset int64      // Tells what is the min offset until which iterator will wait
 	dataWaiter chan int64 // The channel on which to notify the iterator to stop waiting
+	closed     bool       // Tells if channel is closed or not
 }
 
-func (s *LogIter) Seek(offset int64) (int64, error) {
+func (s *LogIter) SeekOffset(offset int64) (int64, error) {
 	newoff, err := s.file.Seek(offset, io.SeekStart)
 	if err == nil {
 		s.offset = newoff
@@ -168,7 +169,7 @@ func (sub *LogIter) Read(b []byte, wait bool) (n int, err error) {
 			sub.offset += int64(n)
 		}
 		if !wait || (err != nil && err != io.EOF) {
-			log.Println("Error: ", err)
+			// log.Println("LogFile Read Error: ", err)
 			return total, err
 		}
 		if total < len(b) {
@@ -183,6 +184,9 @@ func (sub *LogIter) Read(b []byte, wait bool) (n int, err error) {
 }
 
 func (sub *LogIter) Close() {
-	close(sub.dataWaiter)
-	sub.file.Close()
+	if !sub.closed {
+		sub.closed = true
+		close(sub.dataWaiter)
+		sub.file.Close()
+	}
 }
