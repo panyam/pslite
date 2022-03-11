@@ -27,6 +27,7 @@ func NewPubSub(serverAddr string) (out *PubSub, err error) {
 }
 
 func (ps *PubSub) EnsureTopic(topic string, folder string) error {
+	folder = ExpandUserPath(folder)
 	if err := os.MkdirAll(folder, 0777); err != nil {
 		return err
 	}

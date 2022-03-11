@@ -16,8 +16,8 @@ import (
 )
 
 var (
-	port        = flag.Int("port", 9111, "Port on which gRPC server should listen TCP conn.")
-	serverAddr  = flag.String("server", "localhost:9111", "Address of the grpc server to test as client.")
+	port        = flag.Int("port", utils.DefaultServerPort(), "Port on which gRPC server should listen TCP conn.")
+	serverAddr  = flag.String("server", utils.DefaultServerAddress(), "Address of the grpc server to test as client.")
 	topicName   = flag.String("topic", "testtopic", "Name of topic where all pubsub actions are performed.")
 	topics_root = flag.String("topics_root", "~/.pslite", "Root location where all topics are created")
 )
