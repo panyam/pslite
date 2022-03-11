@@ -73,6 +73,18 @@ func (lf *LogFile) Publish(message []byte) (offset int64, err error) {
 	return
 }
 
+func (lf *LogFile) RemoveWaiter(waiterChannel chan int64) {
+	var newList []OffsetListener
+	lf.olistMutex.Lock()
+	for _, olist := range lf.offsetListeners {
+		if olist.waiterChannel != waiterChannel {
+			newList = append(newList, olist)
+		}
+	}
+	lf.offsetListeners = newList
+	lf.olistMutex.Unlock()
+}
+
 /**
  * Used by readers that have reached EOF to "wait" for data to be available.
  */
@@ -186,7 +198,11 @@ func (sub *LogIter) Read(b []byte, wait bool) (n int, err error) {
 func (sub *LogIter) Close() {
 	if !sub.closed {
 		sub.closed = true
-		close(sub.dataWaiter)
+		if sub.dataWaiter != nil {
+			sub.logfile.RemoveWaiter(sub.dataWaiter)
+			close(sub.dataWaiter)
+			sub.dataWaiter = nil
+		}
 		sub.file.Close()
 	}
 }
