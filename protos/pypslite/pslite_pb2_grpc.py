@@ -2,7 +2,7 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import pslite_pb2 as pslite__pb2
+from pypslite import pslite_pb2 as pypslite_dot_pslite__pb2
 
 
 class PSLiteServiceStub(object):
@@ -25,18 +25,18 @@ class PSLiteServiceStub(object):
         """
         self.OpenTopic = channel.unary_unary(
                 '/pslite_protos.PSLiteService/OpenTopic',
-                request_serializer=pslite__pb2.OpenTopicRequest.SerializeToString,
-                response_deserializer=pslite__pb2.EmptyMessage.FromString,
+                request_serializer=pypslite_dot_pslite__pb2.OpenTopicRequest.SerializeToString,
+                response_deserializer=pypslite_dot_pslite__pb2.EmptyMessage.FromString,
                 )
         self.Publish = channel.unary_unary(
                 '/pslite_protos.PSLiteService/Publish',
-                request_serializer=pslite__pb2.PublishRequest.SerializeToString,
-                response_deserializer=pslite__pb2.EmptyMessage.FromString,
+                request_serializer=pypslite_dot_pslite__pb2.PublishRequest.SerializeToString,
+                response_deserializer=pypslite_dot_pslite__pb2.EmptyMessage.FromString,
                 )
         self.Subscribe = channel.unary_stream(
                 '/pslite_protos.PSLiteService/Subscribe',
-                request_serializer=pslite__pb2.SubscribeRequest.SerializeToString,
-                response_deserializer=pslite__pb2.Message.FromString,
+                request_serializer=pypslite_dot_pslite__pb2.SubscribeRequest.SerializeToString,
+                response_deserializer=pypslite_dot_pslite__pb2.Message.FromString,
                 )
 
 
@@ -75,18 +75,18 @@ def add_PSLiteServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'OpenTopic': grpc.unary_unary_rpc_method_handler(
                     servicer.OpenTopic,
-                    request_deserializer=pslite__pb2.OpenTopicRequest.FromString,
-                    response_serializer=pslite__pb2.EmptyMessage.SerializeToString,
+                    request_deserializer=pypslite_dot_pslite__pb2.OpenTopicRequest.FromString,
+                    response_serializer=pypslite_dot_pslite__pb2.EmptyMessage.SerializeToString,
             ),
             'Publish': grpc.unary_unary_rpc_method_handler(
                     servicer.Publish,
-                    request_deserializer=pslite__pb2.PublishRequest.FromString,
-                    response_serializer=pslite__pb2.EmptyMessage.SerializeToString,
+                    request_deserializer=pypslite_dot_pslite__pb2.PublishRequest.FromString,
+                    response_serializer=pypslite_dot_pslite__pb2.EmptyMessage.SerializeToString,
             ),
             'Subscribe': grpc.unary_stream_rpc_method_handler(
                     servicer.Subscribe,
-                    request_deserializer=pslite__pb2.SubscribeRequest.FromString,
-                    response_serializer=pslite__pb2.Message.SerializeToString,
+                    request_deserializer=pypslite_dot_pslite__pb2.SubscribeRequest.FromString,
+                    response_serializer=pypslite_dot_pslite__pb2.Message.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -119,8 +119,8 @@ class PSLiteService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pslite_protos.PSLiteService/OpenTopic',
-            pslite__pb2.OpenTopicRequest.SerializeToString,
-            pslite__pb2.EmptyMessage.FromString,
+            pypslite_dot_pslite__pb2.OpenTopicRequest.SerializeToString,
+            pypslite_dot_pslite__pb2.EmptyMessage.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -136,8 +136,8 @@ class PSLiteService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pslite_protos.PSLiteService/Publish',
-            pslite__pb2.PublishRequest.SerializeToString,
-            pslite__pb2.EmptyMessage.FromString,
+            pypslite_dot_pslite__pb2.PublishRequest.SerializeToString,
+            pypslite_dot_pslite__pb2.EmptyMessage.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -153,7 +153,7 @@ class PSLiteService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_stream(request, target, '/pslite_protos.PSLiteService/Subscribe',
-            pslite__pb2.SubscribeRequest.SerializeToString,
-            pslite__pb2.Message.FromString,
+            pypslite_dot_pslite__pb2.SubscribeRequest.SerializeToString,
+            pypslite_dot_pslite__pb2.Message.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
