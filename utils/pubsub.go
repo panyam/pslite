@@ -5,6 +5,7 @@ import (
 	protos "github.com/panyam/pslite/protos"
 	"google.golang.org/grpc"
 	"io"
+	"log"
 	"os"
 	"path"
 )
@@ -28,6 +29,7 @@ func NewPubSub(serverAddr string) (out *PubSub, err error) {
 
 func (ps *PubSub) EnsureTopic(topic string, folder string) error {
 	folder = ExpandUserPath(folder)
+	log.Println("Expanded folder: ", folder)
 	if err := os.MkdirAll(folder, 0777); err != nil {
 		return err
 	}

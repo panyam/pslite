@@ -33,7 +33,7 @@ func NewPSLiteServiceClient(cc grpc.ClientConnInterface) PSLiteServiceClient {
 
 func (c *pSLiteServiceClient) OpenTopic(ctx context.Context, in *OpenTopicRequest, opts ...grpc.CallOption) (*EmptyMessage, error) {
 	out := new(EmptyMessage)
-	err := c.cc.Invoke(ctx, "/protos.PSLiteService/OpenTopic", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pslite_protos.PSLiteService/OpenTopic", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func (c *pSLiteServiceClient) OpenTopic(ctx context.Context, in *OpenTopicReques
 
 func (c *pSLiteServiceClient) Publish(ctx context.Context, in *PublishRequest, opts ...grpc.CallOption) (*EmptyMessage, error) {
 	out := new(EmptyMessage)
-	err := c.cc.Invoke(ctx, "/protos.PSLiteService/Publish", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pslite_protos.PSLiteService/Publish", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (c *pSLiteServiceClient) Publish(ctx context.Context, in *PublishRequest, o
 }
 
 func (c *pSLiteServiceClient) Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (PSLiteService_SubscribeClient, error) {
-	stream, err := c.cc.NewStream(ctx, &PSLiteService_ServiceDesc.Streams[0], "/protos.PSLiteService/Subscribe", opts...)
+	stream, err := c.cc.NewStream(ctx, &PSLiteService_ServiceDesc.Streams[0], "/pslite_protos.PSLiteService/Subscribe", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func _PSLiteService_OpenTopic_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/protos.PSLiteService/OpenTopic",
+		FullMethod: "/pslite_protos.PSLiteService/OpenTopic",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PSLiteServiceServer).OpenTopic(ctx, req.(*OpenTopicRequest))
@@ -145,7 +145,7 @@ func _PSLiteService_Publish_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/protos.PSLiteService/Publish",
+		FullMethod: "/pslite_protos.PSLiteService/Publish",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PSLiteServiceServer).Publish(ctx, req.(*PublishRequest))
@@ -178,7 +178,7 @@ func (x *pSLiteServiceSubscribeServer) Send(m *Message) error {
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var PSLiteService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "protos.PSLiteService",
+	ServiceName: "pslite_protos.PSLiteService",
 	HandlerType: (*PSLiteServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
