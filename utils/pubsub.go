@@ -5,6 +5,7 @@ import (
 	protos "github.com/panyam/pslite/protos"
 	"google.golang.org/grpc"
 	"io"
+	"os"
 	"path"
 )
 
@@ -26,6 +27,9 @@ func NewPubSub(serverAddr string) (out *PubSub, err error) {
 }
 
 func (ps *PubSub) EnsureTopic(topic string, folder string) error {
+	if err := os.MkdirAll(folder, 0777); err != nil {
+		return err
+	}
 	req := &protos.OpenTopicRequest{
 		Topic: &protos.Topic{
 			Name:        topic,
@@ -37,11 +41,11 @@ func (ps *PubSub) EnsureTopic(topic string, folder string) error {
 	return err
 }
 
-func (ps *PubSub) Publish(topic string, data string) error {
+func (ps *PubSub) Publish(topic string, data []byte) error {
 	pubreq := &protos.PublishRequest{
 		TopicName: topic,
-		Content: &protos.PublishRequest_ContentString{
-			ContentString: data,
+		Content: &protos.PublishRequest_ContentBytes{
+			ContentBytes: data,
 		},
 	}
 	_, err := ps.client.Publish(context.Background(), pubreq)

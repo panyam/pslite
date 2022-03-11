@@ -14,13 +14,20 @@ type OffsetListener struct {
 
 type OnOffsetReachedType = func(offset int64)
 
+/**
+ * The LogFile is an abstraction over an append-online file with multiple readers within this file.
+ * Note that this basic abstraction does not provide thread safety.  The LogFile is perfectly fine
+ * for use where single threaded access is guaranteed.
+ *
+ * Alternatively something the LogFilePublisher allows multiple writers and readers in a synchronized
+ * fashion.
+ */
 type LogFile struct {
 	file_path       string
 	file            *os.File
 	offset          int64
 	olistMutex      sync.RWMutex
 	offsetListeners []OffsetListener
-	bufferLock      sync.RWMutex
 	OnOffsetReached OnOffsetReachedType
 }
 

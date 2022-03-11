@@ -45,7 +45,7 @@ func main() {
 			err = pubsub.EnsureTopic(*topicName, args[1])
 		}
 		if args[0] == "pub" {
-			err = pubsub.Publish(*topicName, args[1])
+			err = pubsub.Publish(*topicName, []byte(args[1]))
 		} else if args[0] == "sub" {
 			offset := int64(0)
 			end_offset := int64(-1)
