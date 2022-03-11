@@ -2,7 +2,7 @@ package utils
 
 import (
 	"context"
-	protos "github.com/panyam/klite/protos"
+	protos "github.com/panyam/pslite/protos"
 	"google.golang.org/grpc"
 	"io"
 	"path"
@@ -11,7 +11,7 @@ import (
 type PubSub struct {
 	serverAddr string
 	conn       *grpc.ClientConn
-	client     protos.KLiteServiceClient
+	client     protos.PSLiteServiceClient
 }
 
 func NewPubSub(serverAddr string) (out *PubSub, err error) {
@@ -20,7 +20,7 @@ func NewPubSub(serverAddr string) (out *PubSub, err error) {
 	}
 	out.conn, err = grpc.Dial(serverAddr, grpc.WithInsecure())
 	if err == nil {
-		out.client = protos.NewKLiteServiceClient(out.conn)
+		out.client = protos.NewPSLiteServiceClient(out.conn)
 	}
 	return
 }

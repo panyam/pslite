@@ -1,4 +1,4 @@
-module github.com/panyam/klite
+module github.com/panyam/pslite
 
 go 1.17
 

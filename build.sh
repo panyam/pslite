@@ -5,7 +5,7 @@ PATH=$PATH:$GOROOT:$GOPATH:$GOBIN
 echo "Generating GO bindings..."
 protoc --go_out=. --go_opt=paths=source_relative \
        --go-grpc_out=. --go-grpc_opt=paths=source_relative \
-      protos/klite.proto
+      protos/pslite.proto
 
 # echo "Generating Python bindings..."
 # Generate the python client too

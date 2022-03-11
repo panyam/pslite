@@ -1,6 +1,6 @@
 syntax = "proto3";
 // import "google/protobuf/struct.proto";
-option go_package = "github.com/panyam/klite";
+option go_package = "github.com/panyam/pslite";
 package protos;
 
 message EmptyMessage {}
@@ -15,7 +15,7 @@ message EmptyMessage {}
  *  When the client is ready they can start listening on the subscription
  *  when the server would send a stream of events/updates.
  */
-service KLiteService {
+service PSLiteService {
   rpc OpenTopic(OpenTopicRequest) returns (EmptyMessage);
   rpc Publish(PublishRequest) returns (EmptyMessage);
   rpc Subscribe(SubscribeRequest) returns (stream Message);

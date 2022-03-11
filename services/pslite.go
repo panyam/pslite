@@ -3,24 +3,23 @@ package services
 import (
 	"context"
 	"fmt"
-	"github.com/panyam/klite/core"
-	protos "github.com/panyam/klite/protos"
-	"log"
-	// "github.com/panyam/klite/utils"
+	"github.com/panyam/pslite/core"
+	protos "github.com/panyam/pslite/protos"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"log"
 	// structpb "google.golang.org/protobuf/types/known/structpb"
 	// "log"
 )
 
-type KLiteService struct {
-	protos.UnimplementedKLiteServiceServer
+type PSLiteService struct {
+	protos.UnimplementedPSLiteServiceServer
 	Engine *core.KLEngine
 	subs   map[string]*Subscription
 }
 
-func NewKLiteService(engine *core.KLEngine) *KLiteService {
-	out := KLiteService{
+func NewPSLiteService(engine *core.KLEngine) *PSLiteService {
+	out := PSLiteService{
 		Engine: engine,
 		subs:   make(map[string]*Subscription),
 	}
@@ -43,7 +42,7 @@ func ToTopicProto(topic *core.FileTopic) *protos.Topic {
 	}
 }
 
-func (s *KLiteService) OpenTopic(ctx context.Context, request *protos.OpenTopicRequest) (out *protos.EmptyMessage, err error) {
+func (s *PSLiteService) OpenTopic(ctx context.Context, request *protos.OpenTopicRequest) (out *protos.EmptyMessage, err error) {
 	topic_proto := request.Topic
 	topic := s.Engine.GetTopic(topic_proto.Name)
 	if topic == nil {
@@ -55,7 +54,7 @@ func (s *KLiteService) OpenTopic(ctx context.Context, request *protos.OpenTopicR
 	return &protos.EmptyMessage{}, err
 }
 
-func (s *KLiteService) Publish(ctx context.Context, pubreq *protos.PublishRequest) (*protos.EmptyMessage, error) {
+func (s *PSLiteService) Publish(ctx context.Context, pubreq *protos.PublishRequest) (*protos.EmptyMessage, error) {
 	topic := s.Engine.GetTopic(pubreq.TopicName)
 	if topic == nil {
 		// Topic does not exist
@@ -74,7 +73,7 @@ func (s *KLiteService) Publish(ctx context.Context, pubreq *protos.PublishReques
 	return &protos.EmptyMessage{}, err
 }
 
-func (s *KLiteService) Subscribe(subreq *protos.SubscribeRequest, stream protos.KLiteService_SubscribeServer) error {
+func (s *PSLiteService) Subscribe(subreq *protos.SubscribeRequest, stream protos.PSLiteService_SubscribeServer) error {
 	topic := s.Engine.GetTopic(subreq.TopicName)
 	if topic == nil {
 		// Topic does not exist

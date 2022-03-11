@@ -6,10 +6,10 @@ import (
 	"flag"
 	"strconv"
 	// "fmt"
-	"github.com/panyam/klite/core"
-	protos "github.com/panyam/klite/protos"
-	svc "github.com/panyam/klite/services"
-	utils "github.com/panyam/klite/utils"
+	"github.com/panyam/pslite/core"
+	protos "github.com/panyam/pslite/protos"
+	svc "github.com/panyam/pslite/services"
+	utils "github.com/panyam/pslite/utils"
 	"google.golang.org/grpc"
 	"log"
 	"net"
@@ -19,7 +19,7 @@ var (
 	port        = flag.Int("port", 9111, "Port on which gRPC server should listen TCP conn.")
 	serverAddr  = flag.String("server", "localhost:9111", "Address of the grpc server to test as client.")
 	topicName   = flag.String("topic", "testtopic", "Name of topic where all pubsub actions are performed.")
-	topics_root = flag.String("topics_root", "~/.klite", "Root location where all topics are created")
+	topics_root = flag.String("topics_root", "~/.pslite", "Root location where all topics are created")
 )
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
 	if len(args) == 0 {
 		grpcServer := grpc.NewServer()
 		engine, err := core.NewEngine(*topics_root)
-		protos.RegisterKLiteServiceServer(grpcServer, svc.NewKLiteService(engine))
+		protos.RegisterPSLiteServiceServer(grpcServer, svc.NewPSLiteService(engine))
 		log.Printf("Initializing gRPC server on port %d", *port)
 		lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 		if err != nil {

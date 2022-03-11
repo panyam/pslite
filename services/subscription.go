@@ -1,9 +1,5 @@
 package services
 
-import (
-// "github.com/panyam/klite/protos"
-)
-
 type SubscriptionId = int64
 
 type Subscription struct {

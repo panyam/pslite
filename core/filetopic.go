@@ -1,13 +1,10 @@
 package core
 
 import (
-	// 	"bytes"
 	"encoding/binary"
 	"fmt"
-	// "github.com/panyam/klite/utils"
 	"io"
 	"log"
-	// "os"
 	"strings"
 )
 
