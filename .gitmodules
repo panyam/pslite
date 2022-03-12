@@ -1,0 +1,3 @@
+[submodule "protos/pypslite"]
+	path = protos/pypslite
+	url = https://github.com/panyam/pypslite
