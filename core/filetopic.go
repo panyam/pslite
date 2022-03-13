@@ -6,7 +6,6 @@ import (
 	"github.com/panyam/pslite/utils"
 	"io"
 	"log"
-	"path/filepath"
 	"strings"
 )
 
