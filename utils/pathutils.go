@@ -28,7 +28,8 @@ func ExpandUserPath(path string) string {
 }
 
 func EnsureDirOf(path string) error {
-	parent := filepath.Base(path)
+	parent := filepath.Dir(path)
+	// log.Println("Parent: ", path, parent)
 	if err := os.MkdirAll(parent, 0777); err != nil {
 		return err
 	}

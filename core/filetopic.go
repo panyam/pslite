@@ -74,9 +74,11 @@ func NewFileTopic(name string, records_path string, index_path string) (*FileTop
 	records_path = utils.ExpandUserPath(records_path)
 	index_path = utils.ExpandUserPath(index_path)
 	if err := utils.EnsureDirOf(records_path); err != nil {
+		log.Fatal("ensure err: ", records_path, err)
 		return nil, err
 	}
 	if err := utils.EnsureDirOf(index_path); err != nil {
+		log.Fatal("ensure err: ", index_path, err)
 		return nil, err
 	}
 

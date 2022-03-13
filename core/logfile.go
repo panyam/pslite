@@ -36,6 +36,9 @@ func NewLogFile(index_path string) (lf *LogFile, err error) {
 		file_path: index_path,
 	}
 	lf.file, err = os.OpenFile(index_path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0755)
+	if err != nil {
+		log.Println("Here 3???", err)
+	}
 	lf.offset, err = lf.Size()
 	return
 }

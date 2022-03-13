@@ -6,12 +6,10 @@ import (
 	"github.com/panyam/pslite/core"
 	protos "github.com/panyam/pslite/protos"
 	svc "github.com/panyam/pslite/services"
-	"github.com/panyam/pslite/utils"
 	"google.golang.org/grpc"
 	"io"
 	"log"
 	"net"
-	"os"
 	"path"
 )
 
@@ -45,11 +43,6 @@ func NewPubSub(serverAddr string) (out *PubSub, err error) {
 }
 
 func (ps *PubSub) EnsureTopic(topic string, folder string) error {
-	folder = utils.ExpandUserPath(folder)
-	log.Println("Expanded folder: ", folder)
-	if err := os.MkdirAll(folder, 0777); err != nil {
-		return err
-	}
 	req := &protos.OpenTopicRequest{
 		Topic: &protos.Topic{
 			Name:        topic,
