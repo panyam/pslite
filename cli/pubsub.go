@@ -25,7 +25,7 @@ func PSLServe(port int, topics_root string) {
 	grpcServer := grpc.NewServer()
 	engine, err := core.NewEngine(topics_root)
 	protos.RegisterPSLiteServiceServer(grpcServer, svc.NewPSLiteService(engine))
-	log.Printf("Initializing gRPC server on port %d", port)
+	log.Printf("Initializing PSLite gRPC server on port %d", port)
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
