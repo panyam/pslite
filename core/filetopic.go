@@ -3,8 +3,10 @@ package core
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/panyam/pslite/utils"
 	"io"
 	"log"
+	"path/filepath"
 	"strings"
 )
 
@@ -70,6 +72,15 @@ func NewFileTopic(name string, records_path string, index_path string) (*FileTop
 	if strings.TrimSpace(name) == "" {
 		return nil, fmt.Errorf("Topic name cannot be empty")
 	}
+	records_path = utils.ExpandUserPath(records_path)
+	index_path = utils.ExpandUserPath(index_path)
+	if err := utils.EnsureDirOf(records_path); err != nil {
+		return nil, err
+	}
+	if err := utils.EnsureDirOf(index_path); err != nil {
+		return nil, err
+	}
+
 	// ensure topic's folder either does not exist or is empty
 	topic := &FileTopic{
 		Name:        name,

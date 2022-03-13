@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
@@ -24,4 +25,12 @@ func ExpandUserPath(path string) string {
 	}
 	path, _ = filepath.Abs(path)
 	return path
+}
+
+func EnsureDirOf(path string) error {
+	parent := filepath.Base(path)
+	if err := os.MkdirAll(parent, 0777); err != nil {
+		return err
+	}
+	return nil
 }
