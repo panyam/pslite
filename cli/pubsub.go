@@ -1,11 +1,16 @@
-package utils
+package cli
 
 import (
 	"context"
+	"fmt"
+	"github.com/panyam/pslite/core"
 	protos "github.com/panyam/pslite/protos"
+	svc "github.com/panyam/pslite/services"
+	"github.com/panyam/pslite/utils"
 	"google.golang.org/grpc"
 	"io"
 	"log"
+	"net"
 	"os"
 	"path"
 )
@@ -14,6 +19,18 @@ type PubSub struct {
 	serverAddr string
 	conn       *grpc.ClientConn
 	client     protos.PSLiteServiceClient
+}
+
+func PSLServe(port int, topics_root string) {
+	grpcServer := grpc.NewServer()
+	engine, err := core.NewEngine(topics_root)
+	protos.RegisterPSLiteServiceServer(grpcServer, svc.NewPSLiteService(engine))
+	log.Printf("Initializing gRPC server on port %d", port)
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	grpcServer.Serve(lis)
 }
 
 func NewPubSub(serverAddr string) (out *PubSub, err error) {
@@ -28,7 +45,7 @@ func NewPubSub(serverAddr string) (out *PubSub, err error) {
 }
 
 func (ps *PubSub) EnsureTopic(topic string, folder string) error {
-	folder = ExpandUserPath(folder)
+	folder = utils.ExpandUserPath(folder)
 	log.Println("Expanded folder: ", folder)
 	if err := os.MkdirAll(folder, 0777); err != nil {
 		return err

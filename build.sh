@@ -9,7 +9,6 @@ protoc --go_out=. --go_opt=paths=source_relative \
 
 echo "Generating Python bindings..."
 # Generate the python client too
-# PY_OUT_DIR="../legfinder/tdproxy"
 git submodule update --init
 PY_OUT_DIR="./protos/pypslite/"
 # This is silly - needed to preserve python's directory structure needs
@@ -18,4 +17,3 @@ python -m grpc_tools.protoc -I./protos  \
     --python_out="$PY_OUT_DIR"          \
     --grpc_python_out="$PY_OUT_DIR"     \
     protos/pypslite/pslite.proto
-# rm -Rf protos/legfinder
