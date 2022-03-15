@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
+	"github.com/panyam/goutils/utils"
 	"github.com/panyam/pslite/cli"
-	"github.com/panyam/pslite/utils"
 	"log"
 	"strconv"
 )

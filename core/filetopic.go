@@ -3,7 +3,7 @@ package core
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/panyam/pslite/utils"
+	"github.com/panyam/goutils/utils"
 	"io"
 	"log"
 	"strings"
